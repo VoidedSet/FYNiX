@@ -1,20 +1,35 @@
+// default cpp includes
 #include <iostream>
 
+// opengl and related includes
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+// project includes
 #include "Window.h"
 #include "Shader.h"
 
 #include "VertexArray.h"
 #include "VertexBuffer.h"
+#include "ElementBuffer.h"
 
 using namespace std;
 
-const float vertices[] = {
-    -0.5f, -0.5f, 0.0f,
-    0.5f, -0.5f, 0.0f,
-    0.0f, 0.5f, 0.0f};
+float vertices[] = {
+    -0.5f, -0.5f, 0.0f, // bottom left
+    0.5f, -0.5f, 0.0f,  // bottom right
+    0.5f, 0.5f, 0.0f,   // top right
+    -0.5f, 0.5f, 0.0f   // top left
+};
+
+unsigned int indices[] = {
+    0, 1, 2, // triangle 1
+    0, 3, 2  // triangle 2
+};
 
 void inputHandler(GLFWwindow *window)
 {
@@ -35,11 +50,13 @@ int main()
 
     VertexArray VAO;
     VertexBuffer VBO(vertices, sizeof(vertices));
+    ElementBuffer EBO(indices, sizeof(indices));
 
     VAO.AddAttribLayout(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
     VBO.UnBind();
     VAO.UnBind();
+    EBO.UnBind();
 
     Shader defaultShader("shaders/basic/vertex.glsl", "shaders/basic/fragment.glsl");
     defaultShader.createProgram();
@@ -55,7 +72,8 @@ int main()
 
         defaultShader.use();
         VAO.Bind();
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        EBO.Bind();
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         //===== SWAP BUFFERS AND POLL EVENTS ===
         glfwSwapBuffers(window);
