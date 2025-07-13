@@ -1,12 +1,25 @@
 #include <iostream>
-#include <glad\glad.h>
+
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
+#include "Window.h"
+#include "Shader.h"
+
+#include "VertexArray.h"
+#include "VertexBuffer.h"
 
 using namespace std;
 
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
+const float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+    0.5f, -0.5f, 0.0f,
+    0.0f, 0.5f, 0.0f};
+
+void inputHandler(GLFWwindow *window)
 {
-    glViewport(0, 0, width, height);
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
 }
 
 int main()
@@ -17,34 +30,34 @@ int main()
         return -1;
     }
 
-    glfwWindowHint(GLFW_SAMPLES, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    Window windowManager("FYNiX - Framework for Yet-to-be Named eXperiences");
+    GLFWwindow *window = windowManager.getWindowObject();
 
-    GLFWwindow *window;
-    window = glfwCreateWindow(800, 600, "FYNiX", NULL, NULL);
-    if (window == NULL)
-    {
-        cout << "Failed to open GLFW window" << endl;
-        return -1;
-    }
-    else
-        cout << "Launching FYNiX: Framework for Yet-to-be Named eXperiences." << endl;
+    VertexArray VAO;
+    VertexBuffer VBO(vertices, sizeof(vertices));
 
-    glfwMakeContextCurrent(window);
+    VAO.AddAttribLayout(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        cout << "Failed to initialize GLAD" << endl;
-        return -1;
-    }
+    VBO.UnBind();
+    VAO.UnBind();
 
-    glViewport(0, 0, 800, 600);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    Shader defaultShader("shaders/basic/vertex.glsl", "shaders/basic/fragment.glsl");
+    defaultShader.createProgram();
 
     while (!glfwWindowShouldClose(window))
     {
+        //===== INPUT SECTION =====
+        inputHandler(window);
+
+        //===== RENDER SECTION =====
+        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        defaultShader.use();
+        VAO.Bind();
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        //===== SWAP BUFFERS AND POLL EVENTS ===
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
