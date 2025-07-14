@@ -82,3 +82,56 @@ void Shader::use()
 {
     glUseProgram(ID);
 }
+
+void Shader::setUniforms(const char *uName, unsigned int type, void *value)
+{
+    int location = glGetUniformLocation(ID, uName);
+    if (location == -1)
+    {
+        cerr << "[Shader - ERROR] Uniform '" << uName << "' not found." << endl;
+        return;
+    }
+
+    switch (static_cast<UniformType>(type))
+    {
+    case UniformType::Float:
+        glUniform1f(location, *static_cast<float *>(value));
+        break;
+
+    case UniformType::Int:
+        glUniform1i(location, *static_cast<int *>(value));
+        break;
+
+    case UniformType::Bool:
+        glUniform1i(location, *static_cast<bool *>(value));
+        break;
+
+    case UniformType::Vec2f:
+        glUniform2fv(location, 1, static_cast<float *>(value));
+        break;
+
+    case UniformType::Vec3f:
+        glUniform3fv(location, 1, static_cast<float *>(value));
+        break;
+
+    case UniformType::Vec4f:
+        glUniform4fv(location, 1, static_cast<float *>(value));
+        break;
+
+    case UniformType::Mat2f:
+        glUniformMatrix2fv(location, 1, GL_FALSE, static_cast<float *>(value));
+        break;
+
+    case UniformType::Mat3f:
+        glUniformMatrix3fv(location, 1, GL_FALSE, static_cast<float *>(value));
+        break;
+
+    case UniformType::Mat4f:
+        glUniformMatrix4fv(location, 1, GL_FALSE, static_cast<float *>(value));
+        break;
+
+    default:
+        cerr << "[Shader - ERROR]: Unknown uniform type.\n";
+        break;
+    }
+}

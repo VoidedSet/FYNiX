@@ -8,11 +8,12 @@
 class Window
 {
 public:
+    const GLFWvidmode *mode;
+
     Window(const char *title);
     GLFWwindow *getWindowObject();
 
 private:
-    const GLFWvidmode *mode;
     GLFWwindow *window;
 
     void setViewport();
