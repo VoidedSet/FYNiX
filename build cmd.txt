@@ -1,0 +1,18 @@
+
+I will be listing all the build commands that i used and will need in futrure just incase
+
+this is for building assimp
+mkdir build
+cd build
+
+cmake .. -G "MinGW Makefiles" ^
+-D ASSIMP_BUILD_ALL_IMPORTERS_BY_DEFAULT=OFF ^
+-D ASSIMP_BUILD_GLTF_IMPORTER=ON ^
+-D ASSIMP_BUILD_OBJ_IMPORTER=ON ^
+-D ASSIMP_BUILD_FBX_IMPORTER=ON ^
+-D ASSIMP_NO_EXPORT=ON ^
+-D ASSIMP_BUILD_TESTS=OFF ^
+-D ASSIMP_BUILD_ASSIMP_TOOLS=OFF ^
+-D ASSIMP_BUILD_SAMPLES=OFF
+
+mingw32-make -j12

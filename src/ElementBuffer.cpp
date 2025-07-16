@@ -1,4 +1,4 @@
-#include "ElementBuffer.h"
+#include "BufferObjects/ElementBuffer.h"
 
 ElementBuffer::ElementBuffer(const void *data, unsigned int size)
 {
