@@ -21,6 +21,8 @@
 
 #include "Model.h"
 
+#include "GUI.h"
+
 using namespace std;
 
 // float vertices[] = {
@@ -97,16 +99,47 @@ Camera *globalCamera = nullptr;
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
-    if (globalCamera)
+    ImGui_ImplGlfw_CursorPosCallback(window, xpos, ypos);
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
+    ImGuiIO &io = ImGui::GetIO();
+    if (!io.WantCaptureMouse && globalCamera)
         globalCamera->mouseInput(xpos, ypos);
+}
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
+{
+    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+}
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+{
+    ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
+}
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
+}
+
+void char_callback(GLFWwindow *window, unsigned int c)
+{
+    ImGui_ImplGlfw_CharCallback(window, c);
 }
 
 void inputHandler(GLFWwindow *window, float deltaTime, Camera &camera)
 {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetCharCallback(window, char_callback);
 
-    camera.processInput(window, deltaTime);
+    ImGuiIO &io = ImGui::GetIO();
+    if (!io.WantCaptureKeyboard)
+    {
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+            glfwSetWindowShouldClose(window, true);
+
+        camera.processInput(window, deltaTime);
+    }
 }
 
 int main()
@@ -120,12 +153,14 @@ int main()
     Window windowManager("FYNiX - Framework for Yet-to-be Named eXperiences");
     GLFWwindow *window = windowManager.getWindowObject();
 
+    GUIManager gui(windowManager.getWindowObject(), windowManager.mode->width, windowManager.mode->height);
+
     glm::mat4 view = glm::mat4(1.f);
     Camera cam(&view);
     globalCamera = &cam;
 
     glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -169,10 +204,14 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
+        glfwPollEvents();
         // ==== DELTA TIME ====
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        // ===== GUI SECTION ===
+        gui.Start();
 
         //===== INPUT SECTION =====
         inputHandler(window, deltaTime, globalCamera ? *globalCamera : cam);
@@ -207,11 +246,12 @@ int main()
         //     glDrawArrays(GL_TRIANGLES, 0, 36);
         // }
 
+        gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===
         glfwSwapBuffers(window);
-        glfwPollEvents();
     }
 
+    gui.Shutdown();
     glfwTerminate();
     return 0;
 }
