@@ -1,6 +1,6 @@
 #include "Model.h"
 
-Model::Model(const std::string &path)
+Model::Model(const std::string &path, unsigned int ID) : ID(ID)
 {
     if (Model::loadModel(path))
     {

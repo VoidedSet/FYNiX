@@ -1,5 +1,6 @@
 // default cpp includes
 #include <iostream>
+#include <windows.h>
 
 // opengl and related includes
 #include <glad/glad.h>
@@ -19,11 +20,16 @@
 #include "BufferObjects/VertexBuffer.h"
 #include "BufferObjects/ElementBuffer.h"
 
-#include "Model.h"
+#include "SceneManager.h"
 
 #include "GUI.h"
 
 using namespace std;
+
+extern "C"
+{
+    __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
+}
 
 // float vertices[] = {
 //     -0.5f, -0.5f, 0.0f, // bottom left
@@ -109,6 +115,13 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
 {
     ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
+
+    ImGuiIO &io = ImGui::GetIO();
+    if (!io.WantCaptureMouse)
+    {
+        if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
 }
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
@@ -136,8 +149,7 @@ void inputHandler(GLFWwindow *window, float deltaTime, Camera &camera)
     if (!io.WantCaptureKeyboard)
     {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
         camera.processInput(window, deltaTime);
     }
 }
@@ -153,14 +165,16 @@ int main()
     Window windowManager("FYNiX - Framework for Yet-to-be Named eXperiences");
     GLFWwindow *window = windowManager.getWindowObject();
 
-    GUIManager gui(windowManager.getWindowObject(), windowManager.mode->width, windowManager.mode->height);
+    SceneManager scene;
+
+    GUIManager gui(windowManager.getWindowObject(), scene, windowManager.mode->width, windowManager.mode->height);
 
     glm::mat4 view = glm::mat4(1.f);
     Camera cam(&view);
     globalCamera = &cam;
 
     glfwSetCursorPosCallback(window, mouse_callback);
-    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -200,7 +214,7 @@ int main()
 
     float deltaTime = 0.0f, lastFrame = 0.0f;
 
-    Model testModel("assets/hand2.glb");
+    cout << "[FYNiX] FYNiX: Framework for Yet-to-be Named eXperiences is ready!" << endl;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -223,29 +237,28 @@ int main()
 
         defaultShader.use();
 
-        float timeValue = glfwGetTime();
-        float greenValue = sin(timeValue) / 2.0f + 0.5f;
-        glm::vec3 color = glm::vec3(0.0f, greenValue, 0.0f);
-        defaultShader.setUniforms("uColor", static_cast<unsigned int>(UniformType::Vec3f), (void *)glm::value_ptr(color));
+        if (scene.models.size() > 0)
+            scene.RenderModels(defaultShader);
 
-        testModel.Draw(defaultShader);
+        // === Re-bind everything required for cube drawing ===
+        defaultShader.use();
+        defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(view));
+        defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(projection));
 
-        // obamaTex.Bind();
-        // trumpTex.Bind();
-        // VAO.Bind();
-        // // EBO.Bind();
-        // // glDrawElements(GL_TRIANGLES, sizeof(indices) / sizeof(unsigned int), GL_UNSIGNED_INT, 0);
-        // for (unsigned int i = 0; i < 10; i++)
-        // {
-        //     glm::mat4 model = glm::mat4(1.0f);
-        //     model = glm::translate(model, cubePositions[i]);
-        //     float angle = 20.0f * i;
-        //     model = glm::rotate(model, glm::radians(angle),
-        //                         glm::vec3(1.0f, 0.3f, 0.5f));
-        //     defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
-        //     glDrawArrays(GL_TRIANGLES, 0, 36);
-        // }
+        obamaTex.Bind();
+        trumpTex.Bind();
+        VAO.Bind(); // <--- THIS IS CRITICAL
 
+        for (unsigned int i = 0; i < 10; i++)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, cubePositions[i]);
+            float angle = 20.0f * i;
+            model = glm::rotate(model, glm::radians(angle),
+                                glm::vec3(1.0f, 0.3f, 0.5f));
+            defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===
         glfwSwapBuffers(window);

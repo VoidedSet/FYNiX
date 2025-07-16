@@ -7,7 +7,7 @@ Camera::Camera(glm::mat4 *viewMatrix) : view(viewMatrix)
 
 void Camera::processInput(GLFWwindow *window, float deltaTime)
 {
-    const float camSpeed = 2.5f * deltaTime;
+    const float camSpeed = 20.f * deltaTime;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camPos += camSpeed * camTarget;

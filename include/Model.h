@@ -16,8 +16,10 @@
 class Model
 {
 public:
-    // Constructor
-    Model(const std::string &path);
+    // this will act as a reference between the model and the scene graph nodes
+    unsigned int ID;
+
+    Model(const std::string &path, unsigned int ID);
 
     // Render the model
     void Draw(Shader &shader);
