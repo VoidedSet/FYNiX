@@ -1,6 +1,7 @@
 // default cpp includes
 #include <iostream>
 #include <windows.h>
+#include <dirent.h>
 
 // opengl and related includes
 #include <glad/glad.h>
@@ -160,18 +161,53 @@ void inputHandler(GLFWwindow *window, float deltaTime, Camera &camera)
     }
 }
 
+std::string FindFynxProjectFile(const std::string &folderPath)
+{
+    DIR *dir;
+    struct dirent *ent;
+
+    dir = opendir(folderPath.c_str());
+    if (dir == nullptr)
+    {
+        std::cerr << "Could not open directory: " << folderPath << std::endl;
+        return "";
+    }
+
+    while ((ent = readdir(dir)) != nullptr)
+    {
+        std::string filename = ent->d_name;
+        if (filename.size() > 5 && filename.substr(filename.size() - 5) == ".fynx")
+        {
+            closedir(dir);
+            return folderPath + "/" + filename;
+        }
+    }
+
+    closedir(dir);
+    return "";
+}
+
 int main()
 {
+    std::string path = FindFynxProjectFile("Projects/Load_Project");
+    if (path.empty())
+    {
+        std::cerr << "[FYNiX] No .fynx file found." << std::endl;
+        getchar();
+        return -1;
+    }
+
     if (!glfwInit())
     {
         cout << "Failed to initialize GLFW" << endl;
         return -1;
     }
 
-    Window windowManager("FYNiX - Framework for Yet-to-be Named eXperiences");
+    std::string projectName = "[" + path.substr(path.find_last_of('/') + 1) + "] FYNiX - Framework for Yet-to-be Named eXperiences";
+    Window windowManager((char *)projectName.c_str());
     GLFWwindow *window = windowManager.getWindowObject();
 
-    SceneManager scene;
+    SceneManager scene(path);
 
     GUIManager gui(windowManager.getWindowObject(), scene, windowManager.mode->width, windowManager.mode->height);
 
@@ -220,6 +256,8 @@ int main()
 
     float deltaTime = 0.0f, lastFrame = 0.0f;
 
+    scene.LoadScene(path);
+
     cout << "[FYNiX] FYNiX: Framework for Yet-to-be Named eXperiences is ready!" << endl;
 
     while (!glfwWindowShouldClose(window))
@@ -247,24 +285,25 @@ int main()
             scene.RenderModels(defaultShader);
 
         // === Re-bind everything required for cube drawing ===
-        defaultShader.use();
-        defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(view));
-        defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(projection));
+        // defaultShader.use();
+        // defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(view));
+        // defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(projection));
 
-        obamaTex.Bind();
-        trumpTex.Bind();
-        VAO.Bind(); // <--- THIS IS CRITICAL
+        // obamaTex.Bind();
+        // trumpTex.Bind();
+        // VAO.Bind(); // <--- THIS IS CRITICAL
 
-        for (unsigned int i = 0; i < 5; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle),
-                                glm::vec3(1.0f, 0.3f, 0.5f));
-            defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-        }
+        // for (unsigned int i = 0; i < 5; i++)
+        // {
+        //     glm::mat4 model = glm::mat4(1.0f);
+        //     model = glm::translate(model, cubePositions[i]);
+        //     float angle = 20.0f * i;
+        //     model = glm::rotate(model, glm::radians(angle),
+        //                         glm::vec3(1.0f, 0.3f, 0.5f));
+        //     defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
+        //     glDrawArrays(GL_TRIANGLES, 0, 36);
+        // }
+
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===
         glfwSwapBuffers(window);

@@ -1,0 +1,15 @@
+{
+  "projectName": "",
+  "scenegraph": {
+    "children": [
+      {
+        "id": 1,
+        "name": "NewNode",
+        "type": "Model"
+      }
+    ],
+    "id": 0,
+    "name": "Root",
+    "type": "Root"
+  }
+}

@@ -18,16 +18,17 @@ class Model
 public:
     // this will act as a reference between the model and the scene graph nodes
     unsigned int ID;
+    std::string directory;
 
     Model(const std::string &path, unsigned int ID);
 
-    // Render the model
     void Draw(Shader &shader);
+    void SetDirectory(const std::string &dir) { directory = dir; }
 
 private:
     // Model Data
     std::vector<Mesh> meshes;
-    std::string directory;
+    std::string dir;
 
     // Internal functions
     bool loadModel(std::string path);

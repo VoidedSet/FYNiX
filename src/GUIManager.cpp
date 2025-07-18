@@ -66,7 +66,7 @@ static char inputBuffer[256] = "";
 static char nodeNameInput[128] = "NewNode";
 static int selectedNodeType = 1, ParentNodeId = 0;
 
-static const char *nodeTypeLabels[] = {"Root", "Model", "Shapes", "Light", "Empty"};
+static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Empty"};
 
 GUIManager::GUIManager(GLFWwindow *window, SceneManager &scene, int windowWidth, int windowHeight)
     : scene(&scene), windowWidth(windowWidth), windowHeight(windowHeight)
@@ -138,6 +138,12 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
 
         ImGui::Separator();
         DrawSceneNode(scene->root);
+        ImGui::Separator();
+
+        if (ImGui::Button(("Save Scene")))
+        {
+            scene->saveScene();
+        }
     }
     ImGui::End();
 }
@@ -196,8 +202,8 @@ void GUIManager::DrawAddNodeModal()
 void GUIManager::DrawSceneNode(Node *node)
 {
     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
-
-    bool open = ImGui::TreeNodeEx((void *)(intptr_t)node->ID, flags, "%s", node->name.c_str());
+    const std::string name = node->name + " (ID: " + std::to_string(node->ID) + ")";
+    bool open = ImGui::TreeNodeEx((void *)(intptr_t)node->ID, flags, "%s", name.c_str());
     if (open)
     {
         for (Node *child : node->children)
