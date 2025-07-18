@@ -64,9 +64,9 @@ static int fps_history_index = 0;
 static char inputBuffer[256] = "";
 
 static char nodeNameInput[128] = "NewNode";
-static int selectedNodeType = 1; // Default: Model
+static int selectedNodeType = 1, ParentNodeId = 0;
 
-static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Empty"};
+static const char *nodeTypeLabels[] = {"Root", "Model", "Shapes", "Light", "Empty"};
 
 GUIManager::GUIManager(GLFWwindow *window, SceneManager &scene, int windowWidth, int windowHeight)
     : scene(&scene), windowWidth(windowWidth), windowHeight(windowHeight)
@@ -126,7 +126,7 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
     const float panelWidth = 300.0f;
 
     ImGui::SetNextWindowPos(ImVec2(windowWidth - panelWidth, 0), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(panelWidth, windowHeight - 200), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(panelWidth, windowHeight - 82), ImGuiCond_Always);
 
     if (ImGui::Begin("Inspector"))
     {
@@ -156,6 +156,9 @@ void GUIManager::DrawAddNodeModal()
         ImGui::Text("Node Type:");
         ImGui::Combo("##NodeType", &selectedNodeType, nodeTypeLabels, IM_ARRAYSIZE(nodeTypeLabels));
 
+        ImGui::Text("Parent Node ID");
+        ImGui::InputInt("##ParentNodeID", &ParentNodeId);
+
         if (selectedNodeType == static_cast<int>(NodeType::Model))
         {
             ImGui::Text("Model Path:");
@@ -169,9 +172,9 @@ void GUIManager::DrawAddNodeModal()
             NodeType type = static_cast<NodeType>(selectedNodeType);
 
             if (type == NodeType::Model)
-                scene->addToParent(nameStr, pathStr, type, scene->root->ID);
+                scene->addToParent(nameStr, pathStr, type, ParentNodeId);
             else
-                scene->addToParent(nameStr, type, scene->root->ID);
+                scene->addToParent(nameStr, type, ParentNodeId);
 
             showAddNodeModal = false;
             ImGui::CloseCurrentPopup();
@@ -208,35 +211,25 @@ void GUIManager::DrawSceneNode(Node *node)
 // =================== Console Panel ===================
 void DrawConsolePanel(int windowWidth, int windowHeight)
 {
-    const float consoleHeight = 200.0f;
+    const float consoleHeight = 180.0f;
 
-    ImGui::SetNextWindowPos(ImVec2(0, windowHeight - consoleHeight), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(windowWidth, consoleHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(0, windowHeight - consoleHeight - 70), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth - 300.f, consoleHeight), ImGuiCond_Always);
+
+    static bool autoScroll = true; // Tracks if we should auto-scroll
 
     if (ImGui::Begin("Console"))
     {
-        ImGui::BeginChild("LogRegion", ImVec2(0, -30), true);
+        ImGui::BeginChild("LogRegion", ImVec2(0, -30), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
         std::lock_guard<std::mutex> lock(g_consoleBuffer.mutex);
         for (const auto &line : g_consoleBuffer.lines)
             ImGui::TextWrapped("%s", line.c_str());
 
-        ImGui::SetScrollHereY(1.0f);
+        if (autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            ImGui::SetScrollHereY(1.0f); // Only scroll if at the bottom
+
         ImGui::EndChild();
-
-        // Input box
-        ImGui::Separator();
-        ImGui::PushItemWidth(-1);
-        if (ImGui::InputText("##ConsoleInput", inputBuffer, sizeof(inputBuffer), ImGuiInputTextFlags_EnterReturnsTrue))
-        {
-            std::string cmd = inputBuffer;
-            g_consoleBuffer.lines.push_back("> " + cmd);
-            std::cout << "[cmd executed: " << cmd << "]\n";
-
-            // TODO: optional real scripting or command parser
-            inputBuffer[0] = '\0'; // Clear after enter
-        }
-        ImGui::PopItemWidth();
     }
     ImGui::End();
 }

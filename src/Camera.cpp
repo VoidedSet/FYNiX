@@ -23,37 +23,40 @@ void Camera::processInput(GLFWwindow *window, float deltaTime)
 
 void Camera::mouseInput(double xpos, double ypos)
 {
-    if (firstMove)
+    if (cameraLock)
     {
+        if (firstMove)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            firstMove = false;
+        }
+
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // y is inverted
+
         lastX = xpos;
         lastY = ypos;
-        firstMove = false;
+
+        float sensitivity = 0.1f;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+
+        yaw += xoffset;
+        pitch += yoffset;
+
+        // clamp pitch
+        if (pitch > 89.0f)
+            pitch = 89.0f;
+        if (pitch < -89.0f)
+            pitch = -89.0f;
+
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        direction.y = sin(glm::radians(pitch));
+        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        camTarget = glm::normalize(direction);
+
+        *view = glm::lookAt(camPos, camPos + camTarget, camUp);
     }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // y is inverted
-
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    // clamp pitch
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(pitch));
-    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    camTarget = glm::normalize(direction);
-
-    *view = glm::lookAt(camPos, camPos + camTarget, camUp);
 }

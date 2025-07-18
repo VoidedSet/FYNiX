@@ -120,7 +120,10 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
     if (!io.WantCaptureMouse)
     {
         if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            globalCamera->cameraLock = true;
+        }
     }
 }
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
@@ -149,7 +152,10 @@ void inputHandler(GLFWwindow *window, float deltaTime, Camera &camera)
     if (!io.WantCaptureKeyboard)
     {
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            camera.cameraLock = false;
+        }
         camera.processInput(window, deltaTime);
     }
 }
@@ -249,7 +255,7 @@ int main()
         trumpTex.Bind();
         VAO.Bind(); // <--- THIS IS CRITICAL
 
-        for (unsigned int i = 0; i < 10; i++)
+        for (unsigned int i = 0; i < 5; i++)
         {
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, cubePositions[i]);
