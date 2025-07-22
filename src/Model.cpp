@@ -1,6 +1,6 @@
 #include "Model.h"
 
-Model::Model(const std::string &path, unsigned int ID) : ID(ID), dir(path)
+Model::Model(const std::string &path, unsigned int ID) : ID(ID), directory(path)
 {
     if (Model::loadModel(path))
     {
@@ -18,6 +18,19 @@ void Model::Draw(Shader &shader)
     {
         meshes[i].Draw(shader);
     }
+}
+
+glm::mat4 Model::getModelMatrix() const
+{
+    glm::mat4 model = glm::mat4(1.0f);
+
+    model = glm::translate(model, this->position);
+    model = glm::rotate(model, this->rotation.x, glm::vec3(1.f, 0.f, 0.f));
+    model = glm::rotate(model, this->rotation.y, glm::vec3(0.f, 1.f, 0.f));
+    model = glm::rotate(model, this->rotation.z, glm::vec3(0.f, 0.f, 1.f));
+    model = glm::scale(model, this->scale);
+
+    return model;
 }
 
 void Model::processNode(aiNode *node, const aiScene *scene)

@@ -23,12 +23,13 @@ public:
 
 private:
     SceneManager *scene;
-    int windowWidth, windowHeight;
+    int windowWidth, windowHeight, selectedNodeID = 0;
     static ImGuiIO io;
 
     void DrawSidePanel(int windowWidth, int windowHeight);
     void DrawAddNodeModal();
     void DrawSceneNode(Node *node);
+    void selectedItemInspector(Node *selectedNode);
 };
 
 class ImGuiConsoleBuffer;

@@ -222,18 +222,6 @@ int main()
 
     Texture obamaTex("assets/obama.png", GL_TEXTURE_2D, 0), trumpTex("assets/trump.png", GL_TEXTURE_2D, 1);
 
-    VertexArray VAO;
-    VertexBuffer VBO(vertices, sizeof(vertices));
-    ElementBuffer EBO(indices, sizeof(indices));
-
-    VAO.AddAttribLayout(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-    // VAO.AddAttribLayout(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
-    VAO.AddAttribLayout(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-
-    VBO.UnBind();
-    VAO.UnBind();
-    EBO.UnBind();
-
     Shader defaultShader("shaders/basic/vertex.glsl", "shaders/basic/fragment.glsl");
     defaultShader.createProgram();
 
@@ -283,26 +271,6 @@ int main()
 
         if (scene.models.size() > 0)
             scene.RenderModels(defaultShader);
-
-        // === Re-bind everything required for cube drawing ===
-        // defaultShader.use();
-        // defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(view));
-        // defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(projection));
-
-        // obamaTex.Bind();
-        // trumpTex.Bind();
-        // VAO.Bind(); // <--- THIS IS CRITICAL
-
-        // for (unsigned int i = 0; i < 5; i++)
-        // {
-        //     glm::mat4 model = glm::mat4(1.0f);
-        //     model = glm::translate(model, cubePositions[i]);
-        //     float angle = 20.0f * i;
-        //     model = glm::rotate(model, glm::radians(angle),
-        //                         glm::vec3(1.0f, 0.3f, 0.5f));
-        //     defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
-        //     glDrawArrays(GL_TRIANGLES, 0, 36);
-        // }
 
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===

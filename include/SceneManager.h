@@ -31,6 +31,8 @@ struct Node
 class SceneManager
 {
 public:
+    unsigned int nextID;
+
     Node *root = new Node({0,
                            "Root",
                            NodeType::Root,
@@ -39,18 +41,24 @@ public:
     std::vector<Node *> nodes;
     std::vector<Model> models;
 
+    std::string nodeTypeToString(NodeType type);
+    NodeType stringToNodeType(const std::string &str);
+
     SceneManager(const std::string &projectPath);
-    void addToParent(std::string &name, NodeType type, unsigned int parentID);
-    void addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID);
+    void addToParent(std::string &name, NodeType type, unsigned int parentID, unsigned int assignedID);
+    void addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID, unsigned int assignedID);
     void RenderModels(Shader &shader);
+
+    void deleteNode(unsigned int ID);
+
+    Model *getModelByID(unsigned int ID);
 
     void saveScene();
     void LoadScene(const std::string &path);
 
+    Node *find_node(unsigned int ID);
+
 private:
-    unsigned int nextID;
     const std::string projectPath;
     std::string projectName;
-
-    Node *find_node(unsigned int ID);
 };

@@ -3,8 +3,9 @@
   "scenegraph": {
     "children": [
       {
-        "id": 1,
-        "name": "NewNode",
+        "id": 5,
+        "modelPath": "assets/hand2.glb",
+        "name": "Fingers",
         "type": "Model"
       }
     ],

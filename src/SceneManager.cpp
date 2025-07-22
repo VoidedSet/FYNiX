@@ -2,7 +2,7 @@
 
 using json = nlohmann::json;
 
-std::string nodeTypeToString(NodeType type)
+std::string SceneManager::nodeTypeToString(NodeType type)
 {
     switch (type)
     {
@@ -19,7 +19,7 @@ std::string nodeTypeToString(NodeType type)
     }
 }
 
-NodeType stringToNodeType(const std::string &str)
+NodeType SceneManager::stringToNodeType(const std::string &str)
 {
     if (str == "Empty")
         return NodeType::Empty;
@@ -40,7 +40,7 @@ SceneManager::SceneManager(const std::string &projectPath) : projectPath(project
     std::cout << "[SceneManager] Initializing SceneManager with project path: " << projectPath << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID)
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, unsigned int assignedID)
 {
     Node *parentNode = find_node(parentID);
     if (!parentNode)
@@ -49,14 +49,15 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
         return;
     }
 
-    Node *newNode = new Node({nextID++, name, type, parentNode, {}});
+    nextID = assignedID + 1;
+    Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
     parentNode->children.push_back(newNode);
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID)
+void SceneManager::addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID, unsigned int assignedID)
 {
     Node *parentNode = find_node(parentID);
     if (!parentNode)
@@ -64,8 +65,8 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
         std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
         return;
     }
-
-    Node *newNode = new Node({nextID++, name, type, parentNode, {}});
+    nextID = assignedID + 1;
+    Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
     parentNode->children.push_back(newNode);
 
@@ -81,10 +82,75 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
 
 void SceneManager::RenderModels(Shader &shader)
 {
-    for (Model &model : models)
+    for (auto &model : models)
     {
+        glm::mat4 modelMat = model.getModelMatrix();
+        shader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(modelMat));
         model.Draw(shader);
     }
+}
+
+void SceneManager::deleteNode(unsigned int ID)
+{
+    if (ID == root->ID)
+    {
+        std::cerr << "[SceneManager] Cannot delete root node." << std::endl;
+        return;
+    }
+    Node *nodeToDelete = find_node(ID);
+    if (!nodeToDelete)
+    {
+        std::cerr << "[SceneManager] Error: Node with ID " << ID << " not found." << std::endl;
+        return;
+    }
+
+    if (nodeToDelete->parent)
+    {
+        auto &siblings = nodeToDelete->parent->children;
+        siblings.erase(std::remove(siblings.begin(), siblings.end(), nodeToDelete), siblings.end());
+    }
+
+    if (!nodeToDelete->children.empty())
+    {
+        for (auto &childern : nodeToDelete->children)
+        {
+            childern->parent = nodeToDelete->parent;
+            nodeToDelete->parent->children.push_back(childern);
+        }
+
+        nodeToDelete->children.clear();
+    }
+
+    if (nodeToDelete->type == NodeType::Model)
+    {
+        auto it = std::find_if(models.begin(), models.end(), [&](const Model &m)
+                               { return m.ID == nodeToDelete->ID; });
+        if (it != models.end())
+        {
+            std::cout << "[SceneManager] Deleting model with ID: " << it->ID << " and path: " << it->directory << std::endl;
+            models.erase(it);
+        }
+        else
+        {
+            std::cerr << "[SceneManager] Warning: No model found for node ID " << nodeToDelete->ID << std::endl;
+        }
+    }
+
+    std::cout << "[SceneManager] Deleting node with ID: " << nodeToDelete->ID << " and name: " << nodeToDelete->name << std::endl;
+    nodes.erase(std::remove(nodes.begin(), nodes.end(), nodeToDelete), nodes.end());
+    delete nodeToDelete;
+}
+
+Model *SceneManager::getModelByID(unsigned int ID)
+{
+    for (Model &model : models)
+    {
+        if (model.ID == ID)
+        {
+            return &model;
+        }
+    }
+    return nullptr;
 }
 
 void SceneManager::saveScene()
@@ -113,6 +179,7 @@ void SceneManager::saveScene()
 
             if (it != models.end())
             {
+                std::cout << it->directory;
                 if (!it->directory.empty())
                 {
                     j["modelPath"] = it->directory;
@@ -218,11 +285,11 @@ void SceneManager::LoadScene(const std::string &path)
         if (type == NodeType::Model && j.contains("modelPath"))
         {
             std::string modelPath = j["modelPath"];
-            addToParent(name, modelPath, type, parent->ID);
+            addToParent(name, modelPath, type, parent->ID, id);
         }
         else
         {
-            addToParent(name, type, parent->ID);
+            addToParent(name, type, parent->ID, id);
         }
 
         if (j.contains("children"))

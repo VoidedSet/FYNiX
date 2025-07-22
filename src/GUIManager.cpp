@@ -139,6 +139,19 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
         ImGui::Separator();
         DrawSceneNode(scene->root);
         ImGui::Separator();
+        ImGui::Text("Selected Node Inspector");
+        {
+            Node *selectedNode = scene->find_node(static_cast<unsigned int>(selectedNodeID)); // Implement getNodeById()
+
+            if (selectedNode)
+            {
+                selectedItemInspector(selectedNode); // Now passes actual node
+            }
+            else
+            {
+                ImGui::Text("No node selected.");
+            }
+        }
 
         if (ImGui::Button(("Save Scene")))
         {
@@ -178,9 +191,9 @@ void GUIManager::DrawAddNodeModal()
             NodeType type = static_cast<NodeType>(selectedNodeType);
 
             if (type == NodeType::Model)
-                scene->addToParent(nameStr, pathStr, type, ParentNodeId);
+                scene->addToParent(nameStr, pathStr, type, ParentNodeId, scene->nextID);
             else
-                scene->addToParent(nameStr, type, ParentNodeId);
+                scene->addToParent(nameStr, type, ParentNodeId, scene->nextID);
 
             showAddNodeModal = false;
             ImGui::CloseCurrentPopup();
@@ -201,9 +214,17 @@ void GUIManager::DrawAddNodeModal()
 // ================= Scene Hierarchy =================
 void GUIManager::DrawSceneNode(Node *node)
 {
-    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
+    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
     const std::string name = node->name + " (ID: " + std::to_string(node->ID) + ")";
     bool open = ImGui::TreeNodeEx((void *)(intptr_t)node->ID, flags, "%s", name.c_str());
+
+    if (ImGui::IsItemClicked())
+    {
+        selectedNodeID = node->ID;
+        std::cout << "Selected Node ID: " << selectedNodeID << std::endl;
+    }
+
     if (open)
     {
         for (Node *child : node->children)
@@ -211,6 +232,42 @@ void GUIManager::DrawSceneNode(Node *node)
             DrawSceneNode(child);
         }
         ImGui::TreePop();
+    }
+}
+
+// =================== Selected Item Inspector =============
+void GUIManager::selectedItemInspector(Node *selectedNode)
+{
+    if (selectedNode)
+    {
+        ImGui::Text("Selected Node: %s (ID: %d)", selectedNode->name.c_str(), selectedNode->ID);
+        ImGui::Text("Type: %s", scene->nodeTypeToString(selectedNode->type).c_str());
+
+        if (selectedNode->type == NodeType::Model)
+        {
+            Model *selectedModel = scene->getModelByID(selectedNode->ID);
+            if (!selectedModel)
+                return;
+
+            ImGui::Text("Model Path: %s", selectedModel->directory.c_str());
+
+            glm::vec3 position = selectedModel->getPosition();
+            glm::vec3 rotation = selectedModel->getRotation();
+            glm::vec3 scale = selectedModel->getScale();
+
+            if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
+                selectedModel->setPosition(position);
+            if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 0.01f))
+                selectedModel->setRotation(rotation);
+            if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f))
+                selectedModel->setScale(scale);
+        }
+
+        if (ImGui::Button("Delete Node"))
+        {
+            std::cout << "Deleting node with ID: " << selectedNode->ID << std::endl;
+            scene->deleteNode(selectedNode->ID);
+        }
     }
 }
 
