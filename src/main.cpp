@@ -32,21 +32,6 @@ extern "C"
     __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
-// float vertices[] = {
-//     -0.5f, -0.5f, 0.0f, // bottom left
-//     0.5f, -0.5f, 0.0f,  // bottom right
-//     0.5f, 0.5f, 0.0f,   // top right
-//     -0.5f, 0.5f, 0.0f   // top left
-// };
-
-// float vertices[] = {
-//     // positions // colors // texture coords
-//     0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,   // top right
-//     0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,  // bottom right
-//     -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-//     -0.5f, 0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f   // top left
-// };
-
 float vertices[] = {
     -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
     0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
@@ -84,18 +69,6 @@ float vertices[] = {
     0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
     -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
     -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
-
-glm::vec3 cubePositions[] = {
-    glm::vec3(0.0f, 0.0f, 0.0f),
-    glm::vec3(2.0f, 5.0f, -15.0f),
-    glm::vec3(-1.5f, -2.2f, -2.5f),
-    glm::vec3(-3.8f, -2.0f, -12.3f),
-    glm::vec3(2.4f, -0.4f, -3.5f),
-    glm::vec3(-1.7f, 3.0f, -7.5f),
-    glm::vec3(1.3f, -2.0f, -2.5f),
-    glm::vec3(1.5f, 2.0f, -2.5f),
-    glm::vec3(1.5f, 0.2f, -1.5f),
-    glm::vec3(-1.3f, 1.0f, -1.5f)};
 
 unsigned int indices[] = {
     0, 1, 2, // triangle 1
@@ -219,8 +192,9 @@ int main()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glEnable(GL_DEPTH_TEST);
+    string texType = "diffuse";
 
-    Texture obamaTex("assets/obama.png", GL_TEXTURE_2D, 0), trumpTex("assets/trump.png", GL_TEXTURE_2D, 1);
+    Texture obamaTex("assets/obama.png", GL_TEXTURE_2D, 0, texType), trumpTex("assets/trump.png", GL_TEXTURE_2D, 1, texType);
 
     Shader defaultShader("shaders/basic/vertex.glsl", "shaders/basic/fragment.glsl");
     defaultShader.createProgram();
@@ -233,7 +207,6 @@ int main()
     defaultShader.setUniforms("texture2", static_cast<unsigned int>(UniformType::Int), (void *)&texUnit1);
 
     glm::mat4 model = glm::mat4(1.f);
-    model = glm::rotate(model, glm::radians(-55.f), glm::vec3(1.f, 0.f, 0.f));
 
     glm::mat4 projection = glm::mat4(1.f);
     projection = glm::perspective(glm::radians(45.f), (float)(windowManager.mode->width / windowManager.mode->height), 0.1f, 100.f);
@@ -245,6 +218,16 @@ int main()
     float deltaTime = 0.0f, lastFrame = 0.0f;
 
     scene.LoadScene(path);
+
+    VertexArray lightVAO;
+    VertexBuffer lightVBO(vertices, sizeof(vertices));
+    lightVBO.Bind();
+
+    lightVAO.AddAttribLayout(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+    lightVAO.AddAttribLayout(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+
+    lightVAO.UnBind();
+    lightVBO.UnBind();
 
     cout << "[FYNiX] FYNiX: Framework for Yet-to-be Named eXperiences is ready!" << endl;
 
@@ -266,6 +249,18 @@ int main()
         //===== RENDER SECTION =====
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glm::mat4 cubeModel = glm::mat4(1.0f);
+        defaultShader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(cubeModel));
+
+        defaultShader.use();
+        obamaTex.Bind(texUnit0);
+        defaultShader.setUniforms("texture_diffuse0", static_cast<unsigned int>(UniformType::Int), (void *)&texUnit0);
+        lightVAO.Bind();
+        lightVBO.Bind();
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        lightVAO.UnBind();
+        lightVBO.UnBind();
 
         defaultShader.use();
 

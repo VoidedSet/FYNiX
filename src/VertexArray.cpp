@@ -16,7 +16,7 @@ void VertexArray::AddAttribLayout(unsigned int index, int count, GLenum type, GL
 
 void VertexArray::Bind()
 {
-    glBindBuffer(GL_ARRAY_BUFFER, ID);
+    glBindVertexArray(ID);
 }
 
 void VertexArray::UnBind()

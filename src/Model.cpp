@@ -2,9 +2,10 @@
 
 Model::Model(const std::string &path, unsigned int ID) : ID(ID), directory(path)
 {
-    if (Model::loadModel(path))
+    if (loadModel(path)) // Not Model::loadModel
     {
         std::cout << "[Model] Model loaded successfully from: " << path << std::endl;
+        std::cout << "[Model] Number of meshes: " << meshes.size() << std::endl;
     }
     else
     {
@@ -80,20 +81,20 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
         else
             vertex.texCoords = glm::vec2(0.0f, 0.0f);
 
-        if (mesh->mMaterialIndex >= 0)
-        {
-            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
-
-            std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-            textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-
-            std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-            textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-
-            // Add more if needed: normals, height, etc
-        }
-
         vertices.push_back(vertex);
+    }
+
+    if (mesh->mMaterialIndex >= 0)
+    {
+        aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+
+        // std::cout << "[Model] Loading textures for mesh: " << mesh->mName.C_Str() << std::endl;
+
+        std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+
+        std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
     }
 
     for (unsigned int i = 0; i < mesh->mNumFaces; i++)
@@ -114,11 +115,27 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
     {
         aiString str;
         mat->GetTexture(type, i, &str);
+        std::string fullPath = std::string(str.C_Str()); // directory + "/" +
 
-        // Optional: check if this texture was already loaded to avoid duplication
+        bool skip = false;
+        for (Texture &t : textures_loaded)
+        {
+            if (t.path == fullPath)
+            {
+                textures.push_back(t);
+                skip = true;
+                break;
+            }
+        }
 
-        Texture texture(str.C_Str(), GL_TEXTURE_2D, i); // or use your Texture class's constructor
-        textures.push_back(texture);
+        if (!skip)
+        {
+            Texture texture(fullPath.c_str(), GL_TEXTURE_2D, i, typeName);
+            texture.path = fullPath;
+            textures.push_back(texture);
+            textures_loaded.push_back(texture); // add to cache
+        }
+        std::cout << "[Texture] Loading: " << fullPath << " (type: " << typeName << ")" << std::endl;
     }
 
     return textures;

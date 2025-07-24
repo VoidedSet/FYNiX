@@ -3,9 +3,15 @@
   "scenegraph": {
     "children": [
       {
-        "id": 5,
-        "modelPath": "assets/hand2.glb",
-        "name": "Fingers",
+        "id": 1,
+        "modelPath": "assets/heart/heart.gltf",
+        "name": "NewNode",
+        "type": "Model"
+      },
+      {
+        "id": 2,
+        "modelPath": "assets/world.glb",
+        "name": "Map",
         "type": "Model"
       }
     ],

@@ -179,7 +179,6 @@ void SceneManager::saveScene()
 
             if (it != models.end())
             {
-                std::cout << it->directory;
                 if (!it->directory.empty())
                 {
                     j["modelPath"] = it->directory;

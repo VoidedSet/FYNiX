@@ -17,11 +17,20 @@ Mesh::Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector
     VAO.UnBind();
     VBO.UnBind();
     EBO.UnBind();
+
+    std::cout << "[Mesh] Texture count : " << textures.size() << std::endl;
 }
 
 void Mesh::Draw(Shader &shader)
 {
     // bind textures, and will also update required shader uniforms.
+    shader.use();
+
+    for (unsigned int i = 0; i < textures.size(); i++)
+    {
+        textures[i].Bind(i);
+        textures[i].SetUniform(shader, textures[i].type + std::to_string(i));
+    }
 
     VAO.Bind();
     VBO.Bind();
@@ -30,4 +39,7 @@ void Mesh::Draw(Shader &shader)
     VAO.UnBind();
     VBO.UnBind();
     EBO.UnBind();
+
+    for (unsigned int i = 0; i < textures.size(); i++)
+        textures[i].UnBind();
 }
