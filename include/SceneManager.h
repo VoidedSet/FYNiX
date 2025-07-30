@@ -43,13 +43,15 @@ public:
     std::vector<Model> models;
     std::vector<Light> lights;
 
+    bool drawLights = true;
+
     std::string nodeTypeToString(NodeType type);
     NodeType stringToNodeType(const std::string &str);
 
     SceneManager(const std::string &projectPath);
 
     // add a light node to parent
-    void addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, bool drawLight);
+    void addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType);
 
     // add a model node to parent
     void addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int assignedID);

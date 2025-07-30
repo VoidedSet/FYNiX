@@ -76,7 +76,6 @@ Mesh::Mesh(MeshType type) : VBO(VertexBuffer(cubeVert, sizeof(cubeVert))), EBO(E
         VBO.UnBind();
         EBO.UnBind();
     }
-    std::cout << indices.size() << std::endl;
 }
 
 void Mesh::Draw(Shader &shader)

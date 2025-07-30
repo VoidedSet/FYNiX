@@ -15,12 +15,6 @@
 #include "Window.h"
 #include "Shader.h"
 #include "Camera.h"
-#include "Texture.h"
-
-// #include "BufferObjects/VertexArray.h"
-// #include "BufferObjects/VertexBuffer.h"
-// #include "BufferObjects/ElementBuffer.h"
-#include "Mesh.h"
 
 #include "SceneManager.h"
 
@@ -168,11 +162,6 @@ int main()
     defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
     defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
 
-    defaultShader.setUniforms("uLightPos", static_cast<unsigned int>(UniformType::Vec3f), (void *)glm::value_ptr(lightPos));
-    defaultShader.setUniforms("uLightColor", static_cast<unsigned int>(UniformType::Vec3f), (void *)glm::value_ptr(lightColor));
-
-    float deltaTime = 0.0f, lastFrame = 0.0f;
-
     scene.LoadScene(path);
 
     lightShader.use();
@@ -181,6 +170,8 @@ int main()
     lightShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
 
     cout << "[FYNiX] FYNiX: Framework for Yet-to-be Named eXperiences is ready!" << endl;
+
+    float deltaTime = 0.0f, lastFrame = 0.0f;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -203,7 +194,7 @@ int main()
         lightShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
 
         //===== RENDER SECTION =====
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         defaultShader.use();

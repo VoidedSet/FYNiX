@@ -40,7 +40,7 @@ SceneManager::SceneManager(const std::string &projectPath) : projectPath(project
     std::cout << "[SceneManager] Initializing SceneManager with project path: " << projectPath << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, bool drawLight)
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType)
 {
     unsigned int assignedID = nextID;
     Node *parentNode = find_node(parentID);
@@ -57,7 +57,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 
     if (type == NodeType::Light)
     {
-        Light light(newNode->ID, lightType, drawLight);
+        Light light(newNode->ID, lightType);
         lights.push_back(light);
     }
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
@@ -136,11 +136,12 @@ void SceneManager::RenderModels(Shader &shader)
 
 void SceneManager::RenderLights(Shader &shader)
 {
-    for (auto &light : lights)
-    {
-        shader.use();
-        light.Draw(shader);
-    }
+    if (drawLights)
+        for (auto &light : lights)
+        {
+            shader.use();
+            light.Draw(shader);
+        }
 }
 
 void SceneManager::deleteNode(unsigned int ID)
@@ -244,6 +245,9 @@ void SceneManager::saveScene()
                 {
                     std::cerr << "[SceneManager] Warning: Model with ID " << node->ID << " has empty directory." << std::endl;
                 }
+                j["position"] = {it->getPosition().x, it->getPosition().y, it->getPosition().z};
+                j["rotation"] = {it->getRotation().x, it->getRotation().y, it->getRotation().z};
+                j["scale"] = {it->getScale().x, it->getScale().y, it->getScale().z};
             }
             else
             {
@@ -254,9 +258,18 @@ void SceneManager::saveScene()
         // Save light-specific data
         else if (node->type == NodeType::Light)
         {
-            j["intensity"] = 1.0;
-            j["direction"] = {0.0, -1.0, 0.0};
-            j["color"] = {1.0, 1.0, 1.0};
+            auto it = std::find_if(lights.begin(), lights.end(), [&](const Light &l)
+                                   { return l.ID == node->ID; });
+
+            if (it != lights.end())
+            {
+                j["color"] = {it->color.x, it->color.y, it->color.z};
+                j["position"] = {it->position.x, it->position.y, it->position.z};
+            }
+            else
+            {
+                std::cerr << "[SceneManager] Warning: No light found for node ID " << node->ID << std::endl;
+            }
         }
 
         // Recurse into children
@@ -330,6 +343,7 @@ void SceneManager::LoadScene(const std::string &path)
     }
     nodes.clear();
     models.clear();
+    lights.clear(); // Add this if lights are persistent
     nextID = 1;
 
     std::function<void(json &, Node *)> buildNodeRecursive = [&](json &j, Node *parent)
@@ -342,12 +356,39 @@ void SceneManager::LoadScene(const std::string &path)
         {
             std::string modelPath = j["modelPath"];
             addToParent(name, modelPath, type, parent->ID);
+
+            // Set model transform if available
+            auto *model = getModelByID(id);
+            if (model)
+            {
+                if (j.contains("position"))
+                    model->setPosition(glm::vec3(j["position"][0], j["position"][1], j["position"][2]));
+                if (j.contains("rotation"))
+                    model->setRotation(glm::vec3(j["rotation"][0], j["rotation"][1], j["rotation"][2]));
+                if (j.contains("scale"))
+                    model->setScale(glm::vec3(j["scale"][0], j["scale"][1], j["scale"][2]));
+            }
+        }
+        else if (type == NodeType::Light)
+        {
+            addToParent(name, type, parent->ID, LightType::DIRECTIONAL);
+
+            // Set light data if available
+            auto *light = getLightById(id);
+            if (light)
+            {
+                if (j.contains("position"))
+                    light->position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
+                if (j.contains("color"))
+                    light->color = glm::vec3(j["color"][0], j["color"][1], j["color"][2]);
+            }
         }
         else
         {
             addToParent(name, type, parent->ID);
         }
 
+        // Recurse into children
         if (j.contains("children"))
         {
             for (auto &childJson : j["children"])

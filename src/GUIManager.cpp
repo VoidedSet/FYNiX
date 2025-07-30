@@ -65,7 +65,7 @@ static char inputBuffer[256] = "";
 
 static char nodeNameInput[128] = "NewNode";
 static int selectedNodeType = 1, ParentNodeId = 0, selectedLightType = 1;
-static bool drawLight = false;
+static bool drawLight = true;
 
 static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Empty"};
 static const char *lightTypeLabels[] = {"Directional Light", "Point Light", "Spot Light", "Sun Light"};
@@ -133,14 +133,27 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
     if (ImGui::Begin("Inspector"))
     {
         ImGui::Text("Scene Options");
+        ImGui::Dummy(ImVec2(0.0f, 5.0f));
         if (ImGui::Button("Add Node"))
         {
             showAddNodeModal = true;
         }
+        if (ImGui::Checkbox("Draw Light?", &drawLight))
+        {
+            scene->drawLights = drawLight;
+        }
+
+        if (ImGui::Button(("Save Scene")))
+        {
+            scene->saveScene();
+        }
 
         ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
         DrawSceneNode(scene->root);
         ImGui::Separator();
+        ImGui::Dummy(ImVec2(0.0f, 10.0f));
         ImGui::Text("Selected Node Inspector");
         {
             Node *selectedNode = scene->find_node(static_cast<unsigned int>(selectedNodeID)); // Implement getNodeById()
@@ -153,11 +166,6 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
             {
                 ImGui::Text("No node selected.");
             }
-        }
-
-        if (ImGui::Button(("Save Scene")))
-        {
-            scene->saveScene();
         }
     }
     ImGui::End();
@@ -190,7 +198,6 @@ void GUIManager::DrawAddNodeModal()
         {
             ImGui::Text("Light Type");
             ImGui::Combo("##LightType", &selectedLightType, lightTypeLabels, IM_ARRAYSIZE(lightTypeLabels));
-            ImGui::Checkbox("Draw Light?", &drawLight);
         }
 
         if (ImGui::Button("OK"))
@@ -203,7 +210,7 @@ void GUIManager::DrawAddNodeModal()
                 scene->addToParent(nameStr, pathStr, type, ParentNodeId);
             else if (type == NodeType::Light)
             {
-                scene->addToParent(nameStr, type, ParentNodeId, (LightType)selectedLightType, drawLight);
+                scene->addToParent(nameStr, type, ParentNodeId, (LightType)selectedLightType);
             }
             else
                 scene->addToParent(nameStr, type, ParentNodeId);
@@ -264,6 +271,7 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
                 return;
 
             ImGui::Text("Model Path: %s", selectedModel->directory.c_str());
+            ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
             glm::vec3 position = selectedModel->getPosition();
             glm::vec3 rotation = selectedModel->getRotation();
@@ -281,13 +289,18 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
             Light *selectedLight = scene->getLightById(selectedNode->ID);
             if (!selectedLight)
                 return;
+            ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
             glm::vec3 position = selectedLight->position, color = selectedLight->color;
             if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
                 selectedLight->position = position;
+            ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
             if (ImGui::ColorPicker3("Light Color", glm::value_ptr(color)))
                 selectedLight->color = color;
         }
+        ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
         if (ImGui::Button("Delete Node"))
         {
             std::cout << "Deleting node with ID: " << selectedNode->ID << std::endl;
