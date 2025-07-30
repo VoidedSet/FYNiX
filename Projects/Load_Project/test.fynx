@@ -7,12 +7,6 @@
         "modelPath": "assets/heart/heart.gltf",
         "name": "NewNode",
         "type": "Model"
-      },
-      {
-        "id": 2,
-        "modelPath": "assets/world.glb",
-        "name": "Map",
-        "type": "Model"
       }
     ],
     "id": 0,

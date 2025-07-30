@@ -8,13 +8,13 @@ Using OpenGL, GLFW and Glad.
 <br>
 
 <h2>Aim</h2>
-- Load models with materials
+- Load models with materials (done)
 <br>- Load animations
-<br>- Have a scene management system
-<br>- Simple GUI (possibly with gizmos)
-<br>- Save Levels and settings and load them
+<br>- Have a scene management system (done)
+<br>- Simple GUI (possibly with gizmos) (done)
+<br>- Save Levels and settings and load them (done)
 <br>- Physics
-<br>- Lighting
+<br>- Lighting (basic lighting done)
 
 <br>
 Additionally I will try to make a game using this engine as a showcase!

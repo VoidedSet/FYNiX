@@ -40,8 +40,9 @@ SceneManager::SceneManager(const std::string &projectPath) : projectPath(project
     std::cout << "[SceneManager] Initializing SceneManager with project path: " << projectPath << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, unsigned int assignedID)
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, bool drawLight)
 {
+    unsigned int assignedID = nextID;
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -54,11 +55,18 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     nodes.push_back(newNode);
     parentNode->children.push_back(newNode);
 
+    if (type == NodeType::Light)
+    {
+        Light light(newNode->ID, lightType, drawLight);
+        lights.push_back(light);
+    }
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID, unsigned int assignedID)
+void SceneManager::addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID)
 {
+    unsigned int assignedID = nextID;
+
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -77,16 +85,61 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
         std::cout << "[SceneManager] Model loaded and added to node with ID: " << newNode->ID << std::endl;
     }
 
+    if (type == NodeType::Light)
+    {
+        // Light light(newNode->ID, LightType::DIRECTIONAL, true, filepath);s
+        // lights.push_back(light);
+        std::cout << "[SceneManager] Light added to node with ID: " << newNode->ID << std::endl;
+    }
+
+    std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
+}
+
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID)
+{
+    unsigned int assignedID = nextID;
+    Node *parentNode = find_node(parentID);
+    if (!parentNode)
+    {
+        std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
+        return;
+    }
+
+    nextID = assignedID + 1;
+    Node *newNode = new Node({assignedID, name, type, parentNode, {}});
+    nodes.push_back(newNode);
+    parentNode->children.push_back(newNode);
+
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
 void SceneManager::RenderModels(Shader &shader)
 {
+    int lightCount = lights.size();
+    shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
+
+    for (int i = 0; i < lightCount; ++i)
+    {
+        std::string posName = "lightPositions[" + std::to_string(i) + "]";
+        std::string colName = "lightColors[" + std::to_string(i) + "]";
+
+        shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].position)));
+        shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
+    }
     for (auto &model : models)
     {
         glm::mat4 modelMat = model.getModelMatrix();
         shader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(modelMat));
         model.Draw(shader);
+    }
+}
+
+void SceneManager::RenderLights(Shader &shader)
+{
+    for (auto &light : lights)
+    {
+        shader.use();
+        light.Draw(shader);
     }
 }
 
@@ -144,12 +197,16 @@ void SceneManager::deleteNode(unsigned int ID)
 Model *SceneManager::getModelByID(unsigned int ID)
 {
     for (Model &model : models)
-    {
         if (model.ID == ID)
-        {
             return &model;
-        }
-    }
+    return nullptr;
+}
+
+Light *SceneManager::getLightById(unsigned int ID)
+{
+    for (Light &light : lights)
+        if (light.ID == ID)
+            return &light;
     return nullptr;
 }
 
@@ -284,11 +341,11 @@ void SceneManager::LoadScene(const std::string &path)
         if (type == NodeType::Model && j.contains("modelPath"))
         {
             std::string modelPath = j["modelPath"];
-            addToParent(name, modelPath, type, parent->ID, id);
+            addToParent(name, modelPath, type, parent->ID);
         }
         else
         {
-            addToParent(name, type, parent->ID, id);
+            addToParent(name, type, parent->ID);
         }
 
         if (j.contains("children"))

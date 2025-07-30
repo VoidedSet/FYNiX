@@ -5,7 +5,7 @@ Model::Model(const std::string &path, unsigned int ID) : ID(ID), directory(path)
     if (loadModel(path)) // Not Model::loadModel
     {
         std::cout << "[Model] Model loaded successfully from: " << path << std::endl;
-        std::cout << "[Model] Number of meshes: " << meshes.size() << std::endl;
+        // std::cout << "[Model] Number of meshes: " << meshes.size() << std::endl;
     }
     else
     {
@@ -135,7 +135,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
             textures.push_back(texture);
             textures_loaded.push_back(texture); // add to cache
         }
-        std::cout << "[Texture] Loading: " << fullPath << " (type: " << typeName << ")" << std::endl;
+        // std::cout << "[Texture] Loading: " << fullPath << " (type: " << typeName << ")" << std::endl;
     }
 
     return textures;

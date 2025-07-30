@@ -17,9 +17,10 @@
 #include "Camera.h"
 #include "Texture.h"
 
-#include "BufferObjects/VertexArray.h"
-#include "BufferObjects/VertexBuffer.h"
-#include "BufferObjects/ElementBuffer.h"
+// #include "BufferObjects/VertexArray.h"
+// #include "BufferObjects/VertexBuffer.h"
+// #include "BufferObjects/ElementBuffer.h"
+#include "Mesh.h"
 
 #include "SceneManager.h"
 
@@ -32,50 +33,10 @@ extern "C"
     __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 }
 
-float vertices[] = {
-    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-    0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-    0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-    0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-    0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-    -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,
-    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-    -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-    -0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-    -0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-    0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-    0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-    0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-    0.5f, -0.5f, -0.5f, 1.0f, 1.0f,
-    0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-    0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-    -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-    -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
-    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-    0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-    0.5f, 0.5f, 0.5f, 1.0f, 0.0f,
-    -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
-    -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
-
-unsigned int indices[] = {
-    0, 1, 2, // triangle 1
-    0, 3, 2  // triangle 2
-};
-
 Camera *globalCamera = nullptr;
+
+glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
@@ -192,22 +153,14 @@ int main()
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glEnable(GL_DEPTH_TEST);
-    string texType = "diffuse";
 
-    Texture obamaTex("assets/obama.png", GL_TEXTURE_2D, 0, texType), trumpTex("assets/trump.png", GL_TEXTURE_2D, 1, texType);
-
-    Shader defaultShader("shaders/basic/vertex.glsl", "shaders/basic/fragment.glsl");
+    Shader defaultShader("shaders/model/vertex.glsl", "shaders/model/fragment.glsl"), lightShader("shaders/light/vertex.glsl", "shaders/light/fragment.glsl");
+    lightShader.createProgram();
     defaultShader.createProgram();
 
     defaultShader.use();
 
-    int texUnit0 = 0, texUnit1 = 1;
-
-    defaultShader.setUniforms("texture1", static_cast<unsigned int>(UniformType::Int), (void *)&texUnit0);
-    defaultShader.setUniforms("texture2", static_cast<unsigned int>(UniformType::Int), (void *)&texUnit1);
-
     glm::mat4 model = glm::mat4(1.f);
-
     glm::mat4 projection = glm::mat4(1.f);
     projection = glm::perspective(glm::radians(45.f), (float)(windowManager.mode->width / windowManager.mode->height), 0.1f, 100.f);
 
@@ -215,19 +168,17 @@ int main()
     defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
     defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
 
+    defaultShader.setUniforms("uLightPos", static_cast<unsigned int>(UniformType::Vec3f), (void *)glm::value_ptr(lightPos));
+    defaultShader.setUniforms("uLightColor", static_cast<unsigned int>(UniformType::Vec3f), (void *)glm::value_ptr(lightColor));
+
     float deltaTime = 0.0f, lastFrame = 0.0f;
 
     scene.LoadScene(path);
 
-    VertexArray lightVAO;
-    VertexBuffer lightVBO(vertices, sizeof(vertices));
-    lightVBO.Bind();
+    lightShader.use();
 
-    lightVAO.AddAttribLayout(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
-    lightVAO.AddAttribLayout(2, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
-
-    lightVAO.UnBind();
-    lightVBO.UnBind();
+    lightShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
+    lightShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
 
     cout << "[FYNiX] FYNiX: Framework for Yet-to-be Named eXperiences is ready!" << endl;
 
@@ -244,28 +195,23 @@ int main()
 
         //===== INPUT SECTION =====
         inputHandler(window, deltaTime, globalCamera ? *globalCamera : cam);
+        defaultShader.use();
         defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
+        defaultShader.setUniforms("uCamPos", static_cast<unsigned int>(UniformType::Vec3f), (void *)glm::value_ptr(globalCamera ? globalCamera->camPos : cam.camPos));
+
+        lightShader.use();
+        lightShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
 
         //===== RENDER SECTION =====
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glm::mat4 cubeModel = glm::mat4(1.0f);
-        defaultShader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(cubeModel));
-
-        defaultShader.use();
-        obamaTex.Bind(texUnit0);
-        defaultShader.setUniforms("texture_diffuse0", static_cast<unsigned int>(UniformType::Int), (void *)&texUnit0);
-        lightVAO.Bind();
-        lightVBO.Bind();
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        lightVAO.UnBind();
-        lightVBO.UnBind();
-
         defaultShader.use();
 
         if (scene.models.size() > 0)
             scene.RenderModels(defaultShader);
+        if (scene.lights.size() > 0)
+            scene.RenderLights(lightShader);
 
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===
