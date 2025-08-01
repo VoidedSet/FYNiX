@@ -58,8 +58,9 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     for (unsigned int i = 0; i < mesh->mNumVertices; i++)
     {
         Vertex vertex;
+        setVertexBoneDataToDefault(vertex);
 
-        vertex.postition = glm::vec3(
+        vertex.position = glm::vec3(
             mesh->mVertices[i].x,
             mesh->mVertices[i].y,
             mesh->mVertices[i].z);
@@ -84,6 +85,21 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
         vertices.push_back(vertex);
     }
 
+    extractBoneWeight(vertices, mesh, scene);
+    std::cout << "[DEBUG] Total bones in model: " << BoneCounter << std::endl;
+
+    for (Vertex &v : vertices)
+    {
+        float total = 0.0f;
+        for (int i = 0; i < MAX_BONE_WEIGHTS; i++)
+            total += v.m_Weights[i];
+        if (total > 0.0f)
+        {
+            for (int i = 0; i < MAX_BONE_WEIGHTS; i++)
+                v.m_Weights[i] /= total;
+        }
+    }
+
     if (mesh->mMaterialIndex >= 0)
     {
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
@@ -105,6 +121,64 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     }
 
     return Mesh(vertices, indices, textures);
+}
+
+void Model::setVertexBoneDataToDefault(Vertex &vertex)
+{
+    for (int i = 0; i < MAX_BONE_WEIGHTS; i++)
+    {
+        vertex.m_BoneIDs[i] = -1;
+        vertex.m_Weights[i] = 0.f;
+    }
+}
+
+void Model::setVertexBoneData(Vertex &vertex, int boneID, float weight)
+{
+    for (int i = 0; i < MAX_BONE_WEIGHTS; i++)
+    {
+        if (vertex.m_BoneIDs[i] < 0)
+        {
+            vertex.m_Weights[i] = weight;
+            vertex.m_BoneIDs[i] = boneID;
+            break;
+        }
+    }
+}
+
+void Model::extractBoneWeight(std::vector<Vertex> &vertices, aiMesh *mesh, const aiScene *scene)
+{
+    for (int boneIndex = 0; boneIndex < mesh->mNumBones; boneIndex++)
+    {
+        int boneID = -1;
+        std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
+
+        if (BoneInfoMap.find(boneName) == BoneInfoMap.end())
+        {
+            BoneInfo newBoneInfo;
+            newBoneInfo.id = BoneCounter;
+            newBoneInfo.offset = ConvertMatrixToGLMFormat(mesh->mBones[boneIndex]->mOffsetMatrix);
+            BoneInfoMap[boneName] = newBoneInfo; // <- THIS LINE WAS MISSING
+            boneID = BoneCounter++;
+        }
+        else
+            boneID = BoneInfoMap[boneName].id;
+        if (boneID == -1)
+        {
+            std::cout << "[Models] Invalid BoneID" << std::endl;
+            return;
+        }
+
+        auto weights = mesh->mBones[boneIndex]->mWeights;
+        int numWeights = mesh->mBones[boneIndex]->mNumWeights;
+
+        for (int weightIndex = 0; weightIndex < numWeights; weightIndex++)
+        {
+            int vertexID = weights[weightIndex].mVertexId;
+            float weight = weights[weightIndex].mWeight;
+            assert(vertexID <= vertices.size());
+            setVertexBoneData(vertices[vertexID], boneID, weight);
+        }
+    }
 }
 
 std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)
@@ -151,6 +225,15 @@ bool Model::loadModel(std::string path)
     {
         std::cerr << "[Model - ERROR] Error loading model: " << importer.GetErrorString() << std::endl;
         return false;
+    }
+
+    if (scene->mAnimations && scene->mNumAnimations > 0)
+    {
+        std::cout << "[Model] Animation: " << scene->mAnimations[0]->mName.C_Str() << std::endl;
+    }
+    else
+    {
+        std::cout << "[Model] No animations found in model." << std::endl;
     }
     processNode(scene->mRootNode, scene);
 

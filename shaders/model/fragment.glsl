@@ -4,7 +4,7 @@ out vec4 FragColor;
 uniform vec3 uCamPos;
 
 uniform int numLights;  // pass number of active lights
-uniform vec3 lightPositions[16];  // max 16 lights
+uniform vec3 lightPositions[16];  // max 16 lights pls
 uniform vec3 lightColors[16];
 
 uniform sampler2D texture_diffuse0;
@@ -20,16 +20,13 @@ void main() {
     vec3 viewDir = normalize(uCamPos - FragPos);
 
     for (int i = 0; i < numLights; ++i) {
-        // Ambient
         float ambientStrength = 0.1;
         vec3 ambient = ambientStrength * lightColors[i];
 
-        // Diffuse
         vec3 lightDir = normalize(lightPositions[i] - FragPos);
         float diff = max(dot(norm, lightDir), 0.0);
         vec3 diffuse = diff * lightColors[i];
 
-        // Specular
         float specularStrength = 0.5;
         vec3 reflectDir = reflect(-lightDir, norm);
         float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
@@ -39,5 +36,5 @@ void main() {
     }
 
     vec4 texColor = texture(texture_diffuse0, TexCoord);
-    FragColor = vec4(result * texColor.rgb, texColor.a);
+    FragColor = vec4(texColor.rgb, texColor.a);
 }

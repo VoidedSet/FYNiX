@@ -242,7 +242,7 @@ void GUIManager::DrawSceneNode(Node *node)
     if (ImGui::IsItemClicked())
     {
         selectedNodeID = node->ID;
-        std::cout << "Selected Node ID: " << selectedNodeID << std::endl;
+        // std::cout << "Selected Node ID: " << selectedNodeID << std::endl;
     }
 
     if (open)

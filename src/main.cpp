@@ -17,8 +17,12 @@
 #include "Camera.h"
 
 #include "SceneManager.h"
+#include "Animation.h"
+#include "Animator.h"
 
 #include "GUI.h"
+
+#define MAX_BONES 250
 
 using namespace std;
 
@@ -28,9 +32,7 @@ extern "C"
 }
 
 Camera *globalCamera = nullptr;
-
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
+glm::vec3 bgColor = glm::vec3(.1f);
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
@@ -162,7 +164,11 @@ int main()
     defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
     defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
 
-    scene.LoadScene(path);
+    // scene.LoadScene(path);
+
+    Model dancingManiac("assets/dancer.gltf", 1);
+    Animation dancingAnim("assets/dancer.gltf", &dancingManiac);
+    Animator animator(&dancingAnim);
 
     lightShader.use();
 
@@ -192,17 +198,29 @@ int main()
 
         lightShader.use();
         lightShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
+        animator.Update(deltaTime);
+
+        auto transforms = animator.GetFinalBoneMatrices();
+        int maxBoneCount = std::min((int)transforms.size(), MAX_BONES);
+        for (int i = 0; i < maxBoneCount; ++i)
+        {
+            std::string uniformName = "finalBonesMatrices[" + std::to_string(i) + "]";
+            defaultShader.setUniforms(uniformName.c_str(), (unsigned int)UniformType::Mat4f, (void *)(glm::value_ptr(transforms[i])));
+        }
+        if (transforms.size() > MAX_BONES)
+            std::cerr << "[WARN] Animation bone matrix count (" << transforms.size() << ") exceeds MAX_BONES (" << MAX_BONES << ")!" << std::endl;
 
         //===== RENDER SECTION =====
-        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+        glClearColor(bgColor.x, bgColor.y, bgColor.z, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         defaultShader.use();
+        dancingManiac.Draw(defaultShader);
 
-        if (scene.models.size() > 0)
-            scene.RenderModels(defaultShader);
-        if (scene.lights.size() > 0)
-            scene.RenderLights(lightShader);
+        // if (scene.models.size() > 0)
+        //     scene.RenderModels(defaultShader);
+        // if (scene.lights.size() > 0)
+        //     scene.RenderLights(lightShader);
 
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===
