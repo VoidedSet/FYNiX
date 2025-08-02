@@ -33,19 +33,33 @@ enum MeshType
 class Mesh
 {
 public:
+    std::string name;
+
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
     std::vector<Texture> textures;
+
+    std::vector<VertexBuffer> morphVBOs;
 
     VertexArray VAO;
     VertexBuffer VBO;
     ElementBuffer EBO;
 
-    Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs);
+    Mesh(std::string name, std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs);
 
     Mesh(MeshType type);
 
     void Draw(Shader &shader);
 
+    void Draw(Shader &shader, int morphA, int morphB, float blend);
+
 private:
+    unsigned int cubeIndices[36] = {
+        0, 1, 2, 2, 3, 0, // front
+        4, 5, 6, 6, 7, 4, // back
+        4, 5, 1, 1, 0, 4, // bottom
+        6, 7, 3, 3, 2, 6, // top
+        4, 7, 3, 3, 0, 4, // left
+        1, 5, 6, 6, 2, 1  // right
+    };
 };

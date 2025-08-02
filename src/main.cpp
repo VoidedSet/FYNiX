@@ -204,6 +204,8 @@ int main()
         if (scene.lights.size() > 0)
             scene.RenderLights(lightShader);
 
+        scene.Update(deltaTime);
+
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===
         glfwSwapBuffers(window);

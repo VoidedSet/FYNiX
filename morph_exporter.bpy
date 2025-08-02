@@ -1,0 +1,51 @@
+import bpy
+
+MESH_NAMES = ["Beta_Joints"]  # Replace with your mesh name
+SAMPLE_EVERY_N_FRAMES = 4
+DELETE_ARMATURE_MODIFIERS = True
+
+depsgraph = bpy.context.evaluated_depsgraph_get()
+start = bpy.context.scene.frame_start
+end = bpy.context.scene.frame_end
+
+for mesh_name in MESH_NAMES:
+    obj = bpy.data.objects.get(mesh_name)
+    if not obj:
+        print(f"[WARN] Object '{mesh_name}' not found, skipping.")
+        continue
+
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode='OBJECT')
+    obj.select_set(True)
+
+    obj.shape_key_clear()
+    obj.shape_key_add(name="Basis", from_mix=False)
+
+    print(f"[INFO] Baking deformed animation for '{mesh_name}'")
+
+    for frame in range(start, end + 1, SAMPLE_EVERY_N_FRAMES):
+        bpy.context.scene.frame_set(frame)
+        evaluated = obj.evaluated_get(depsgraph)
+        evaluated_mesh = evaluated.to_mesh()
+
+        new_key = obj.shape_key_add(name=f"Key_{frame}", from_mix=False)
+        for i, coord in enumerate(evaluated_mesh.vertices):
+            new_key.data[i].co = coord.co
+
+        evaluated.to_mesh_clear()
+        print(f"[✓] Frame {frame} → ShapeKey 'Key_{frame}'")
+
+    # Animate shape key weights
+    for frame in range(start, end + 1, SAMPLE_EVERY_N_FRAMES):
+        bpy.context.scene.frame_set(frame)
+        for key in obj.data.shape_keys.key_blocks:
+            key.value = 1.0 if key.name == f"Key_{frame}" else 0.0
+            key.keyframe_insert(data_path="value", frame=frame)
+
+    if DELETE_ARMATURE_MODIFIERS:
+        for mod in obj.modifiers:
+            if mod.type == 'ARMATURE':
+                obj.modifiers.remove(mod)
+                print(f"[INFO] Removed Armature modifier from '{mesh_name}'")
+
+print("[✓] Deformed mesh baking complete. Ready for export.")

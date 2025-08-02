@@ -59,6 +59,13 @@ public:
     // add any other node to parent
     void addToParent(std::string &name, NodeType type, unsigned int parentID);
 
+    void Update(float deltaTime)
+    {
+        for (auto &model : models)
+            if (model.isReady)
+                model.Update(deltaTime);
+    }
+
     void RenderModels(Shader &shader);
     void RenderLights(Shader &shader);
 

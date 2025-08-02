@@ -38,8 +38,8 @@ float cubeVert[] = {
     -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
     -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
 
-Mesh::Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs)
-    : vertices(vert), indices(inds), textures(texs),
+Mesh::Mesh(std::string name, std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs)
+    : name(name), vertices(vert), indices(inds), textures(texs),
       VBO(vertices.data(), vertices.size() * sizeof(Vertex)),
       EBO(indices.data(), indices.size() * sizeof(unsigned int))
 {
@@ -55,11 +55,11 @@ Mesh::Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector
     VAO.UnBind();
     VBO.UnBind();
     EBO.UnBind();
-
-    // std::cout << "[Mesh] Texture count : " << textures.size() << std::endl;
 }
 
-Mesh::Mesh(MeshType type) : VBO(VertexBuffer(cubeVert, sizeof(cubeVert))), EBO(ElementBuffer(this->cubeIndices, sizeof(this->cubeIndices)))
+Mesh::Mesh(MeshType type)
+    : VBO(VertexBuffer(cubeVert, sizeof(cubeVert))),
+      EBO(ElementBuffer(this->cubeIndices, sizeof(this->cubeIndices)))
 {
     indices.push_back(0);
     if (type == MeshType::CUBE)
@@ -80,7 +80,11 @@ Mesh::Mesh(MeshType type) : VBO(VertexBuffer(cubeVert, sizeof(cubeVert))), EBO(E
 
 void Mesh::Draw(Shader &shader)
 {
-    // bind textures, and will also update required shader uniforms.
+    Draw(shader, -1, -1, 0.0f); // Default: no morph targets
+}
+
+void Mesh::Draw(Shader &shader, int morphA, int morphB, float blend)
+{
     shader.use();
 
     for (unsigned int i = 0; i < textures.size(); i++)
@@ -92,13 +96,34 @@ void Mesh::Draw(Shader &shader)
     VAO.Bind();
     VBO.Bind();
     EBO.Bind();
+
+    bool morphValid = morphA >= 0 && morphB >= 0 &&
+                      morphA < morphVBOs.size() &&
+                      morphB < morphVBOs.size();
+
+    if (morphValid)
+    {
+        morphVBOs[morphA].Bind();
+        glEnableVertexAttribArray(3);
+        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+
+        morphVBOs[morphB].Bind();
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void *)0);
+
+        shader.setUniforms("blendFactor", (unsigned int)UniformType::Float, &blend);
+    }
+    else
+    {
+        glDisableVertexAttribArray(3);
+        glDisableVertexAttribArray(4);
+    }
+
     if (indices.size() > 1)
         glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
     else
-    {
         glDrawArrays(GL_TRIANGLES, 0, 36);
-        // std::cout << "[Mesh] Warning drawing without indexing. Vertex redundancy!" << std::endl;
-    }
+
     VAO.UnBind();
     VBO.UnBind();
     EBO.UnBind();
