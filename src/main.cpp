@@ -200,7 +200,7 @@ int main()
         defaultShader.use();
 
         if (scene.models.size() > 0)
-            scene.RenderModels(defaultShader);
+            scene.RenderModels(defaultShader, deltaTime);
         if (scene.lights.size() > 0)
             scene.RenderLights(lightShader);
 

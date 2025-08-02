@@ -52,6 +52,11 @@ Mesh::Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector
     VAO.AddAttribLayout(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, normal));    // normal
     VAO.AddAttribLayout(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void *)offsetof(Vertex, texCoords)); // texCoords
 
+    glEnableVertexAttribArray(3);
+    glVertexAttribIPointer(3, 4, GL_INT, sizeof(Vertex), (GLvoid *)offsetof(Vertex, boneIds));
+
+    VAO.AddAttribLayout(4, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)offsetof(Vertex, boneWeights)); // bone wieghts
+
     VAO.UnBind();
     VBO.UnBind();
     EBO.UnBind();

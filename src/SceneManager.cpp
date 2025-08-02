@@ -113,7 +113,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
-void SceneManager::RenderModels(Shader &shader)
+void SceneManager::RenderModels(Shader &shader, float deltaTime)
 {
     int lightCount = lights.size();
     shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
@@ -126,10 +126,14 @@ void SceneManager::RenderModels(Shader &shader)
         shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].position)));
         shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
     }
-    for (auto &model : models)
+
+    for (Model &model : models)
     {
+        if (model.hasAnimation)
+            model.UpdateAnimation(deltaTime);
+
         glm::mat4 modelMat = model.getModelMatrix();
-        shader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), glm::value_ptr(modelMat));
+        shader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(modelMat));
         model.Draw(shader);
     }
 }

@@ -59,7 +59,7 @@ public:
     // add any other node to parent
     void addToParent(std::string &name, NodeType type, unsigned int parentID);
 
-    void RenderModels(Shader &shader);
+    void RenderModels(Shader &shader, float deltaTime);
     void RenderLights(Shader &shader);
 
     void deleteNode(unsigned int ID);
