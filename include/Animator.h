@@ -1,16 +1,13 @@
 #pragma once
 
 #include <vector>
-#include <iostream>
 #include <string>
 #include <unordered_map>
 
-#include <glad/glad.h>
-#include <GLFW/glfw3.h>
-
 #include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
+
+#include <assimp/scene.h>
 
 struct BoneTransformTrack
 {
@@ -33,5 +30,17 @@ struct Animation
 class Animator
 {
 public:
-    Animation *currentAnimation;
+    Animator();
+    void loadAnimation(const aiScene *scene);
+    void updateAnimation(float deltaTime, struct Skeleton &skeleton, std::vector<glm::mat4> &finalBoneMatrices, const glm::mat4 &globalInverseTransform);
+
+private:
+    std::vector<Animation> animations;
+    float currentTime = 0.f;
+
+    void getPose(Animation &animation, struct Bone &skeleton, float dt, std::vector<glm::mat4> &output, const glm::mat4 &parentTransform, const glm::mat4 &globalInverseTransform);
+    std::pair<unsigned int, float> getTimeFraction(std::vector<float> &times, float &dt);
+
+    glm::vec3 assimpToGlmVec3(aiVector3D vec);
+    glm::quat assimpToGlmQuat(aiQuaternion quat);
 };

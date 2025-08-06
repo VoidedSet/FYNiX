@@ -34,12 +34,33 @@
       },
       {
         "id": 3,
-        "modelPath": "assets/running_guy.gltf",
+        "modelPath": "assets/dancer.gltf",
         "name": "NewNode",
         "position": [
           1.0,
           1.0,
+          1.3899999856948853
+        ],
+        "rotation": [
+          2.009999990463257,
+          1.0,
           1.0
+        ],
+        "scale": [
+          9.999999747378752e-05,
+          9.999999747378752e-05,
+          9.999999747378752e-05
+        ],
+        "type": "Model"
+      },
+      {
+        "id": 4,
+        "modelPath": "assets/running_guy.gltf",
+        "name": "NewNode",
+        "position": [
+          1.0,
+          0.8600000143051147,
+          -1.159999966621399
         ],
         "rotation": [
           0.0,
@@ -47,9 +68,30 @@
           0.0
         ],
         "scale": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224
+        ],
+        "type": "Model"
+      },
+      {
+        "id": 5,
+        "modelPath": "assets/dancer.gltf",
+        "name": "NewNode",
+        "position": [
           1.0,
           1.0,
           1.0
+        ],
+        "rotation": [
+          -1.0,
+          1.0,
+          1.0
+        ],
+        "scale": [
+          9.999999747378752e-05,
+          9.999999747378752e-05,
+          9.999999747378752e-05
         ],
         "type": "Model"
       }
