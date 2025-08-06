@@ -14,13 +14,15 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 
+// (Include other necessary headers: vector, string, glm, etc.)
 #include "Mesh.h"
 #include "Shader.h"
 #include "Animator.h"
 
+// Assuming Bone and Skeleton are defined here or included from another file
 struct Bone
 {
-    int id = 0; // position of the bone in final upload array
+    int id = 0;
     std::string name = "";
     glm::mat4 offset = glm::mat4(1.0f);
     std::vector<Bone> children = {};
@@ -45,22 +47,27 @@ public:
     void Draw(Shader &shader);
     void UpdateAnimation(float deltaTime);
 
+    // --- Animation Control Wrappers ---
+    void seek(float time);
+    Animator &getAnimator() { return animator; }
+
+    // (rest of your public methods: setPosition, etc.)
     void setPosition(const glm::vec3 &pos) { position = pos; }
     void setRotation(const glm::vec3 &rot) { rotation = rot; }
     void setScale(const glm::vec3 &scl) { scale = scl; }
-
     glm::vec3 getPosition() const { return position; }
     glm::vec3 getRotation() const { return rotation; }
     glm::vec3 getScale() const { return scale; }
-
     glm::mat4 getModelMatrix() const;
 
 private:
+    // Model Data
     std::vector<Mesh> meshes;
     Skeleton skeleton;
-    Animator animator;
+    Animator animator; // Now accessed via getAnimator()
     std::vector<glm::mat4> finalBoneMatrices;
 
+    // (private members and methods)
     glm::vec3 position = glm::vec3(1.f);
     glm::vec3 rotation = glm::vec3(1.f);
     glm::vec3 scale = glm::vec3(1.f);

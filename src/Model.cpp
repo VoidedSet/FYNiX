@@ -250,3 +250,11 @@ void Model::UpdateAnimation(float deltaTime)
         animator.updateAnimation(deltaTime, skeleton, finalBoneMatrices, globalInverseTransform);
     }
 }
+
+void Model::seek(float time)
+{
+    if (hasAnimation)
+    {
+        animator.seek(time, skeleton, finalBoneMatrices, globalInverseTransform);
+    }
+}

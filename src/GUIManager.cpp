@@ -273,16 +273,75 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
             ImGui::Text("Model Path: %s", selectedModel->directory.c_str());
             ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
+            // --- Standard Transform Controls ---
             glm::vec3 position = selectedModel->getPosition();
             glm::vec3 rotation = selectedModel->getRotation();
             glm::vec3 scale = selectedModel->getScale();
-
             if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
                 selectedModel->setPosition(position);
             if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 0.01f))
                 selectedModel->setRotation(rotation);
             if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f))
                 selectedModel->setScale(scale);
+
+            // ===============================================
+            // ============== ANIMATION UI ADDED HERE ==============
+            // ===============================================
+            if (selectedModel->hasAnimation)
+            {
+                ImGui::Separator();
+                ImGui::Dummy(ImVec2(0.0f, 5.0f));
+                ImGui::Text("Animation Controls");
+
+                Animator &animator = selectedModel->getAnimator();
+                Animation *currentAnim = animator.getCurrentAnimation();
+
+                if (currentAnim)
+                {
+                    // --- Animation Selection Dropdown ---
+                    const char *current_anim_name = animator.animationNames[animator.currentAnimationIndex].c_str();
+                    if (ImGui::BeginCombo("Animation", current_anim_name))
+                    {
+                        for (int i = 0; i < animator.animationNames.size(); ++i)
+                        {
+                            const bool is_selected = (animator.currentAnimationIndex == i);
+                            if (ImGui::Selectable(animator.animationNames[i].c_str(), is_selected))
+                            {
+                                animator.setAnimation(i);
+                            }
+                            if (is_selected)
+                            {
+                                ImGui::SetItemDefaultFocus();
+                            }
+                        }
+                        ImGui::EndCombo();
+                    }
+
+                    // --- Playback Controls (Play/Pause Button) ---
+                    if (animator.isPaused)
+                    {
+                        if (ImGui::Button("Play"))
+                        {
+                            animator.play();
+                        }
+                    }
+                    else
+                    {
+                        if (ImGui::Button("Pause"))
+                        {
+                            animator.pause();
+                        }
+                    }
+                    ImGui::SameLine();
+                    ImGui::Text("%.2f / %.2f", animator.currentTime, currentAnim->duration);
+
+                    // --- Seek Slider ---
+                    if (ImGui::SliderFloat("Seek", &animator.currentTime, 0.0f, currentAnim->duration))
+                    {
+                        selectedModel->seek(animator.currentTime);
+                    }
+                }
+            }
         }
         else if (selectedNode->type == NodeType::Light)
         {
