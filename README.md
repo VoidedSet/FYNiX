@@ -1,20 +1,78 @@
-<h1>FYNiX: Framework for Yet to be Named eXperiences!</h1>
-I have decided to give my self 10 days to build a simple game engine in Cpp. This project is more of a learning project.
-<br> 
-You can follow this repo on your own risk!
-<br>
-Using OpenGL, GLFW and Glad.
-<br>
-<br>
+# FYNiX: Framework for Yet to be Named eXperiences!
 
-<h2>Aim</h2>
-- Load models with materials (done)
-<br>- Load animations
-<br>- Have a scene management system (done)
-<br>- Simple GUI (possibly with gizmos) (done)
-<br>- Save Levels and settings and load them (done)
-<br>- Physics
-<br>- Lighting (basic lighting done)
+FYNiX is a lightweight, custom game engine built in C++ using OpenGL.  
+Originally started as a 10-day challenge, it's now evolving into a long-term learning project and a powerful game development toolkit.
 
-<br>
-Additionally I will try to make a game using this engine as a showcase!
+> ⚠️ Follow this repo at your own risk since it under active development, constant refactoring, and lots of trial-and-error.
+
+---
+
+## 🛠️ Tech Stack
+
+- C++17
+- OpenGL
+- GLFW – windowing & input
+- GLAD – OpenGL loader
+- GLM – math library
+- Assimp – model & animation loader
+- stb_image – texture loading
+- Dear ImGui – editor GUI
+- Planned: Bullet or custom physics
+- Planned: miniaudio or OpenAL for 3D audio
+
+---
+
+## ✅ Core Features (Implemented)
+
+- ✅ Load 3D models with materials (textures & color fallback)
+- ✅ Load and play skeletal animations (basic skinning + playback)
+- ✅ Scene graph and entity management system
+- ✅ ImGui-based editor GUI with transform manipulation
+- ✅ Scene saving and loading (.fynx)
+- ✅ Basic lighting: Phong point lights
+- ✅ Animation controls via GUI (switch, loop, etc.)
+
+---
+
+## 🔜 In Progress / Upcoming
+
+- 🔲 Particle system (smoke, fog, sparks, custom emitters)
+- 🔲 Advanced lighting (spotlight, falloff, shadows)
+- 🔲 Material system (metallic, specular, roughness, alpha, etc.)
+- 🔲 Skybox + environment lighting
+- 🔲 Physics system (rigidbodies, basic collision)
+- 🔲 3D audio system with spatial sound
+
+---
+
+## 🎮 Planned Showcase Game
+
+To demonstrate the engine's capabilities, a small game will be built using FYNiX. Shortlisted ideas:
+
+- 🏎️ **F1-style racing demo**  
+  - Focus on VFX (particles, motion blur)
+  - Ambient sounds, skybox, reflections
+
+- 🚓 **Tactical FPS breach demo**  
+  - Character animations, particles, physics, gunfire, and lighting
+
+---
+
+## 🎯 Why FYNiX Exists
+
+This isn't about reinventing Unity or Unreal. It's about **learning how things work under the hood**:  
+Rendering, animation, asset pipelines, and real-time systems — from scratch.  
+FYNiX is built to understand, experiment, and create.
+
+---
+
+## 🚧 Status
+
+**Actively being developed.**  
+Check commits for progress logs, refactors, and subsystem overhauls.
+
+---
+
+## License
+
+TBD — currently private/dev only.
