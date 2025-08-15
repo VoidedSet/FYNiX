@@ -58,16 +58,16 @@ void DrawConsolePanel(int windowWidth, int windowHeight);
 void drawResourceOverlay(bool *p_open = nullptr); // Optional pointer
 
 static bool showAddNodeModal = false;
-static char modelPathInput[256] = "";
+static char modelPathInput[256] = "", shaderName[256] = "";
 static float fps_history[90] = {};
 static int fps_history_index = 0;
 static char inputBuffer[256] = "";
 
 static char nodeNameInput[128] = "NewNode";
-static int selectedNodeType = 1, ParentNodeId = 0, selectedLightType = 1;
+static int selectedNodeType = 1, ParentNodeId = 0, selectedLightType = 1, maxParticles = 0;
 static bool drawLight = true;
 
-static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Empty"};
+static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Particles", "Empty"};
 static const char *lightTypeLabels[] = {"Directional Light", "Point Light", "Spot Light", "Sun Light"};
 
 GUIManager::GUIManager(GLFWwindow *window, SceneManager &scene, int windowWidth, int windowHeight)
@@ -200,18 +200,29 @@ void GUIManager::DrawAddNodeModal()
             ImGui::Combo("##LightType", &selectedLightType, lightTypeLabels, IM_ARRAYSIZE(lightTypeLabels));
         }
 
+        if (selectedNodeType == (int)NodeType::Particles)
+        {
+
+            ImGui::Text("Shader Name: ");
+            ImGui::InputText("##ShaderName", shaderName, IM_ARRAYSIZE(shaderName));
+
+            ImGui::Text("Max Particles");
+            ImGui::InputInt("##MaxParticles", &maxParticles);
+        }
+
         if (ImGui::Button("OK"))
         {
             std::string nameStr = nodeNameInput;
             std::string pathStr = modelPathInput;
+            std::string shaderNamestr = shaderName;
             NodeType type = static_cast<NodeType>(selectedNodeType);
 
             if (type == NodeType::Model)
                 scene->addToParent(nameStr, pathStr, type, ParentNodeId);
             else if (type == NodeType::Light)
-            {
                 scene->addToParent(nameStr, type, ParentNodeId, (LightType)selectedLightType);
-            }
+            else if (type == NodeType::Particles)
+                scene->addToParent(nameStr, type, ParentNodeId, shaderNamestr, (unsigned int)maxParticles);
             else
                 scene->addToParent(nameStr, type, ParentNodeId);
 
@@ -285,7 +296,7 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
                 selectedModel->setScale(scale);
 
             // ===============================================
-            // ============== ANIMATION UI ADDED HERE ==============
+            // ============== ANIMATION UI HERE ==============
             // ===============================================
             if (selectedModel->hasAnimation)
             {
@@ -345,7 +356,7 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
         }
         else if (selectedNode->type == NodeType::Light)
         {
-            Light *selectedLight = scene->getLightById(selectedNode->ID);
+            Light *selectedLight = scene->getLightByID(selectedNode->ID);
             if (!selectedLight)
                 return;
             ImGui::Dummy(ImVec2(0.0f, 5.0f));
@@ -357,6 +368,32 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
 
             if (ImGui::ColorPicker3("Light Color", glm::value_ptr(color)))
                 selectedLight->color = color;
+        }
+        else if (selectedNode->type == NodeType::Particles)
+        {
+            ParticleEmitter *selectedEmitter = scene->getEmitterByID(selectedNode->ID);
+            Light *selectedLight = scene->getLightByID(selectedNode->children[0]->ID);
+
+            if (!selectedEmitter)
+                return;
+            ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
+            glm::vec3 position = selectedEmitter->Position;
+            glm::vec4 color = selectedEmitter->Color;
+
+            if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
+            {
+                selectedEmitter->Position = position;
+                selectedLight->position = position;
+            }
+
+            ImGui::Dummy(ImVec2(0.0f, 5.0f));
+
+            if (ImGui::ColorPicker4("Light Color", glm::value_ptr(color)))
+            {
+                selectedEmitter->Color = color;
+                selectedLight->color = glm::vec3(color);
+            }
         }
         ImGui::Dummy(ImVec2(0.0f, 5.0f));
 

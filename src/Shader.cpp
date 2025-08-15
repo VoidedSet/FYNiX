@@ -2,6 +2,42 @@
 
 using namespace std;
 
+Shader::Shader(const char *Name, const char *vertex_shader_src, const char *fragment_shader_src)
+{
+    this->Name = Name;
+    ifstream vFile(vertex_shader_src);
+    ifstream fFile(fragment_shader_src);
+    if (!vFile.is_open() || !fFile.is_open())
+    {
+        cerr << "[Shader - ERROR] Failed to open shader file(s)." << endl;
+        return;
+    }
+
+    stringstream vStream, fStream;
+
+    vStream << vFile.rdbuf();
+    fStream << fFile.rdbuf();
+
+    std::string vCode = vStream.str();
+    std::string fCode = fStream.str();
+    const char *vShaderCode = vCode.c_str();
+    const char *fShaderCode = fCode.c_str();
+
+    vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShaderID, 1, &vShaderCode, NULL);
+    glCompileShader(vertexShaderID);
+
+    Shader::checkCompileErrors(vertexShaderID, "Shader");
+
+    fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShaderID, 1, &fShaderCode, NULL);
+    glCompileShader(fragmentShaderID);
+
+    Shader::checkCompileErrors(fragmentShaderID, "Shader");
+
+    // cout << "[Shader] Shader program with vert shader at " << vertex_shader_src << " and fragment shader at " << fragment_shader_src << " was loaded! Waiting to create program." << endl;
+}
+
 Shader::Shader(const char *vertex_shader_src, const char *fragment_shader_src)
 {
     ifstream vFile(vertex_shader_src);
@@ -33,6 +69,8 @@ Shader::Shader(const char *vertex_shader_src, const char *fragment_shader_src)
     glCompileShader(fragmentShaderID);
 
     Shader::checkCompileErrors(fragmentShaderID, "Shader");
+
+    // cout << "[Shader] Shader program with vert shader at " << vertex_shader_src << " and fragment shader at " << fragment_shader_src << " was loaded! Waiting to create program." << endl;
 }
 
 void Shader::createProgram()
@@ -43,6 +81,8 @@ void Shader::createProgram()
     glLinkProgram(ID);
 
     Shader::checkCompileErrors(ID, "Program");
+
+    // cout << "Shader program: " << Name << " created.";
 
     // delete the shaders as they're linked to the program now
     glDeleteShader(vertexShaderID);

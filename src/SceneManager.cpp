@@ -14,6 +14,8 @@ std::string SceneManager::nodeTypeToString(NodeType type)
         return "Light";
     case NodeType::Root:
         return "Root";
+    case NodeType::Particles:
+        return "ParticleEmitter";
     default:
         return "Unknown";
     }
@@ -29,6 +31,8 @@ NodeType SceneManager::stringToNodeType(const std::string &str)
         return NodeType::Light;
     if (str == "Root")
         return NodeType::Root;
+    if (str == "ParticleEmitter")
+        return NodeType::Particles;
     return NodeType::Empty;
 }
 
@@ -85,11 +89,30 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
         std::cout << "[SceneManager] Model loaded and added to node with ID: " << newNode->ID << std::endl;
     }
 
-    if (type == NodeType::Light)
+    std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
+}
+
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles)
+{
+    unsigned int assignedID = nextID;
+    Node *parentNode = find_node(parentID);
+    if (!parentNode)
     {
-        // Light light(newNode->ID, LightType::DIRECTIONAL, true, filepath);s
-        // lights.push_back(light);
-        std::cout << "[SceneManager] Light added to node with ID: " << newNode->ID << std::endl;
+        std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
+        return;
+    }
+
+    nextID = assignedID + 1;
+    Node *newNode = new Node({assignedID, name, type, parentNode, {}});
+    nodes.push_back(newNode);
+    parentNode->children.push_back(newNode);
+
+    if (type == NodeType::Particles)
+    {
+        ParticleEmitter particleEmitter(sm->findShader("particle"), maxParticles, assignedID);
+        particleEmitters.push_back(particleEmitter);
+
+        addToParent(name, NodeType::Light, assignedID, LightType::POINTLIGHT);
     }
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
@@ -148,6 +171,27 @@ void SceneManager::RenderLights(Shader &shader)
         }
 }
 
+void SceneManager::RenderParticles(float dt)
+{
+    for (auto &emitter : particleEmitters)
+    {
+        for (int i = 0; i < 10; i++)
+        {
+            Particle newParticle;
+            newParticle.Position = glm::vec3(0.0f, 0.0f, 0.0f);
+            newParticle.Velocity = glm::vec3((rand() % 100 - 50) / 10.0f, 5.f, (rand() % 100 - 50) / 10.0f);
+            newParticle.Life = 1.5f;
+            // newParticle.Color = glm::vec4(1.0f, 0.5f, 0.2f, 1.0f);
+            newParticle.Color = emitter.Color;
+            newParticle.Size = 0.1f;
+            emitter.SpawnParticle(newParticle);
+        }
+
+        emitter.Update(dt);
+        emitter.Draw();
+    }
+}
+
 void SceneManager::deleteNode(unsigned int ID)
 {
     if (ID == root->ID)
@@ -194,6 +238,36 @@ void SceneManager::deleteNode(unsigned int ID)
         }
     }
 
+    if (nodeToDelete->type == NodeType::Light)
+    {
+        auto it = std::find_if(lights.begin(), lights.end(), [&](const Light &m)
+                               { return m.ID == nodeToDelete->ID; });
+        if (it != lights.end())
+        {
+            std::cout << "[SceneManager] Deleting Light with ID: " << it->ID << std::endl;
+            lights.erase(it);
+        }
+        else
+            std::cerr << "[SceneManager] Warning: No Light found for node ID " << nodeToDelete->ID << std::endl;
+    }
+    if (nodeToDelete->type == NodeType::Particles)
+    {
+        if (!nodeToDelete->children.empty())
+        {
+            deleteNode(nodeToDelete->children[0]->ID);
+        }
+        auto it = std::find_if(particleEmitters.begin(), particleEmitters.end(), [&](const ParticleEmitter &m)
+                               { return m.ID == nodeToDelete->ID; });
+        if (it != particleEmitters.end())
+        {
+            std::cout << "[SceneManager] Deleting Particle Emitter with ID: " << it->ID << std::endl;
+            // deleteNode(nodeToDelete->children[0]->ID);
+            particleEmitters.erase(it);
+        }
+        else
+            std::cerr << "[SceneManager] Warning: No Particle Emitter found for node ID " << nodeToDelete->ID << std::endl;
+    }
+
     std::cout << "[SceneManager] Deleting node with ID: " << nodeToDelete->ID << " and name: " << nodeToDelete->name << std::endl;
     nodes.erase(std::remove(nodes.begin(), nodes.end(), nodeToDelete), nodes.end());
     delete nodeToDelete;
@@ -207,11 +281,19 @@ Model *SceneManager::getModelByID(unsigned int ID)
     return nullptr;
 }
 
-Light *SceneManager::getLightById(unsigned int ID)
+Light *SceneManager::getLightByID(unsigned int ID)
 {
     for (Light &light : lights)
         if (light.ID == ID)
             return &light;
+    return nullptr;
+}
+
+ParticleEmitter *SceneManager::getEmitterByID(unsigned int ID)
+{
+    for (ParticleEmitter &emitter : particleEmitters)
+        if (emitter.ID == ID)
+            return &emitter;
     return nullptr;
 }
 
@@ -273,6 +355,24 @@ void SceneManager::saveScene()
             else
             {
                 std::cerr << "[SceneManager] Warning: No light found for node ID " << node->ID << std::endl;
+            }
+        }
+
+        else if (node->type == NodeType::Particles)
+        {
+            auto it = std::find_if(particleEmitters.begin(), particleEmitters.end(), [&](const ParticleEmitter &p)
+                                   { return p.ID == node->ID; });
+
+            if (it != particleEmitters.end())
+            {
+                j["color"] = {it->Color.r, it->Color.g, it->Color.b, it->Color.a};
+                j["position"] = {it->Position.x, it->Position.y, it->Position.z};
+                j["shdaerName"] = it->shader.Name;
+                j["maxParticles"] = it->maxParticles;
+            }
+            else
+            {
+                std::cerr << "[SceneManager] Warning: No Particle Emitter found for node ID " << node->ID << std::endl;
             }
         }
 
@@ -378,13 +478,34 @@ void SceneManager::LoadScene(const std::string &path)
             addToParent(name, type, parent->ID, LightType::DIRECTIONAL);
 
             // Set light data if available
-            auto *light = getLightById(id);
+            auto *light = getLightByID(id);
             if (light)
             {
                 if (j.contains("position"))
                     light->position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
                 if (j.contains("color"))
                     light->color = glm::vec3(j["color"][0], j["color"][1], j["color"][2]);
+            }
+        }
+        else if (type == NodeType::Particles)
+        {
+            std::string shaderName;
+            unsigned int maxParticles = 0;
+
+            if (j.contains("shaderName"))
+                shaderName = j["shaderName"];
+            if (j.contains("maxParticles"))
+                maxParticles = j["maxParticles"];
+
+            addToParent(name, type, parent->ID, shaderName, maxParticles);
+
+            auto *emitter = getEmitterByID(id);
+            if (emitter)
+            {
+                if (j.contains("position"))
+                    emitter->Position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
+                if (j.contains("color"))
+                    emitter->Color = glm::vec4(j["color"][0], j["color"][1], j["color"][2], j["color"][3]);
             }
         }
         else

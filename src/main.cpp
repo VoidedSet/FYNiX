@@ -18,7 +18,11 @@
 
 #include "SceneManager.h"
 
+#include "ShaderManager.h"
+
 #include "GUI.h"
+
+#include "ParticleSystem.h"
 
 using namespace std;
 
@@ -63,12 +67,10 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 {
     ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
 }
-
 void char_callback(GLFWwindow *window, unsigned int c)
 {
     ImGui_ImplGlfw_CharCallback(window, c);
 }
-
 void inputHandler(GLFWwindow *window, float deltaTime, Camera &camera)
 {
     glfwSetCursorPosCallback(window, mouse_callback);
@@ -88,7 +90,6 @@ void inputHandler(GLFWwindow *window, float deltaTime, Camera &camera)
         camera.processInput(window, deltaTime);
     }
 }
-
 std::string FindFynxProjectFile(const std::string &folderPath)
 {
     DIR *dir;
@@ -148,14 +149,23 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
 
-    Shader defaultShader("shaders/model/vertex.glsl", "shaders/model/fragment.glsl"), lightShader("shaders/light/vertex.glsl", "shaders/light/fragment.glsl");
-    lightShader.createProgram();
-    defaultShader.createProgram();
+    ShaderManager sm;
+    scene.sm = &sm;
+
+    sm.addShader("light", "shaders/light/vertex.glsl", "shaders/light/fragment.glsl"),
+        sm.addShader("default", "shaders/model/vertex.glsl", "shaders/model/fragment.glsl"),
+        sm.addShader("particle", "shaders/particles/particles.vert", "shaders/particles/particles.frag");
+
+    Shader lightShader = sm.findShader("light"),
+           particleShader = sm.findShader("particle"),
+           defaultShader = sm.findShader("default");
+
+    sm.listShaders();
 
     defaultShader.use();
 
-    glm::mat4 model = glm::mat4(1.f);
-    glm::mat4 projection = glm::mat4(1.f);
+    glm::mat4 model = glm::mat4(0.f);
+    glm::mat4 projection = glm::mat4(0.f);
     projection = glm::perspective(glm::radians(45.f), (float)(windowManager.mode->width / windowManager.mode->height), 0.1f, 100.f);
 
     defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
@@ -168,6 +178,13 @@ int main()
 
     lightShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
     lightShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
+
+    // ParticleEmitter emitter(particleShader, 5000);
+
+    particleShader.use();
+
+    particleShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
+    particleShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
 
     cout << "[FYNiX] FYNiX: Framework for Yet-to-be Named eXperiences is ready!" << endl;
 
@@ -193,9 +210,26 @@ int main()
         lightShader.use();
         lightShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
 
+        particleShader.use();
+        particleShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
+
         //===== RENDER SECTION =====
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // for (int i = 0; i < 10; i++)
+        // {
+        //     Particle newParticle;
+        //     newParticle.Position = glm::vec3(0.0f, 0.0f, 0.0f);
+        //     newParticle.Velocity = glm::vec3((rand() % 100 - 50) / 10.0f, 5.f, (rand() % 100 - 50) / 10.0f);
+        //     newParticle.Life = 1.5f;
+        //     newParticle.Color = glm::vec4(1.0f, 0.5f, 0.2f, 1.0f);
+        //     newParticle.Size = 0.1f;
+        //     emitter.SpawnParticle(newParticle);
+        // }
+
+        // emitter.Update(deltaTime);
+        // emitter.Draw();
 
         defaultShader.use();
 
@@ -203,6 +237,8 @@ int main()
             scene.RenderModels(defaultShader, deltaTime);
         if (scene.lights.size() > 0)
             scene.RenderLights(lightShader);
+        if (scene.particleEmitters.size() > 0)
+            scene.RenderParticles(deltaTime);
 
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===

@@ -27,7 +27,9 @@ class Shader
 {
 public:
     unsigned int ID, vertexShaderID, fragmentShaderID;
+    const char *Name;
 
+    Shader(const char *Name, const char *vertex_shader_src, const char *fragment_shader_src);
     Shader(const char *vertex_shader_src, const char *fragment_shader_src);
     void createProgram();
     void use();
