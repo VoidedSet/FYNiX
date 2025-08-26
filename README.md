@@ -17,7 +17,7 @@ Originally started as a 10-day challenge, it's now evolving into a long-term lea
 - Assimp – model & animation loader
 - stb_image – texture loading
 - Dear ImGui – editor GUI
-- Planned: Bullet or custom physics
+- Planned: Bullet physics
 - Planned: miniaudio or OpenAL for 3D audio
 
 ---
@@ -31,12 +31,12 @@ Originally started as a 10-day challenge, it's now evolving into a long-term lea
 - ✅ Scene saving and loading (.fynx)
 - ✅ Basic lighting: Phong point lights
 - ✅ Animation controls via GUI (switch, loop, etc.)
+- ✅ Particle system (custom emitters)
 
 ---
 
 ## 🔜 In Progress / Upcoming
 
-- 🔲 Particle system (smoke, fog, sparks, custom emitters)
 - 🔲 Advanced lighting (spotlight, falloff, shadows)
 - 🔲 Material system (metallic, specular, roughness, alpha, etc.)
 - 🔲 Skybox + environment lighting
