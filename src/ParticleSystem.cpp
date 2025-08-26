@@ -7,11 +7,8 @@
 ParticleEmitter::ParticleEmitter(Shader shader, unsigned int maxParticles)
     : shader(shader), maxParticles(maxParticles), lastUsedParticle(0)
 {
-    // Resize the particle vector to hold the maximum number of particles
     this->particles.resize(maxParticles);
 
-    // Pre-allocate the instance data vector to avoid re-allocating in Draw()
-    // Each particle requires 8 floats (4 for position/size, 4 for color)
     this->particleData.resize(maxParticles * 8);
 
     init();
@@ -20,11 +17,8 @@ ParticleEmitter::ParticleEmitter(Shader shader, unsigned int maxParticles)
 ParticleEmitter::ParticleEmitter(Shader shader, unsigned int maxParticles, unsigned int ID)
     : shader(shader), maxParticles(maxParticles), lastUsedParticle(0), ID(ID)
 {
-    // Resize the particle vector to hold the maximum number of particles
     this->particles.resize(maxParticles);
 
-    // Pre-allocate the instance data vector to avoid re-allocating in Draw()
-    // Each particle requires 8 floats (4 for position/size, 4 for color)
     this->particleData.resize(maxParticles * 8);
 
     init();
@@ -34,8 +28,6 @@ ParticleEmitter::ParticleEmitter(Shader shader, unsigned int maxParticles, unsig
 
 void ParticleEmitter::init()
 {
-    // A simple quad to render each particle instance.
-    // Each vertex has 2D position (x, y) and 2D texture coordinates (s, t).
     float particle_quad[] = {
         // positions  // texCoords
         -0.5f, 0.5f, 0.0f, 1.0f,  // top-left
@@ -44,41 +36,32 @@ void ParticleEmitter::init()
         0.5f, -0.5f, 1.0f, 0.0f,  // bottom-right
     };
 
-    // Create and bind the Vertex Array Object
     glGenVertexArrays(1, &this->VAO);
     glBindVertexArray(this->VAO);
 
-    // Create and bind the VBO for the quad vertices
     unsigned int VBO;
     glGenBuffers(1, &VBO);
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(particle_quad), particle_quad, GL_STATIC_DRAW);
 
-    // Enable vertex attribute 0 for position/texture coordinates
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
 
-    // Create and bind the instance VBO for per-particle data
     glGenBuffers(1, &this->instanceVBO);
     glBindBuffer(GL_ARRAY_BUFFER, this->instanceVBO);
 
-    // Allocate memory for all particles (position and color data)
-    // The size is maxParticles * 8 floats (4 for position/size, 4 for color)
+    // GPT SUCCKS, GEMINI >>>>>
     glBufferData(GL_ARRAY_BUFFER, maxParticles * 8 * sizeof(float), NULL, GL_DYNAMIC_DRAW);
 
-    // Enable vertex attribute 1 for the particle's position and size
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
 
-    // Enable vertex attribute 2 for the particle's color
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(4 * sizeof(float)));
 
-    // Tell OpenGL to advance these attributes once per instance
     glVertexAttribDivisor(1, 1);
     glVertexAttribDivisor(2, 1);
 
-    // Unbind the VAO
     glBindVertexArray(0);
 }
 
@@ -110,11 +93,9 @@ void ParticleEmitter::Update(float deltaTime)
 
 void ParticleEmitter::Draw()
 {
-    // A simple counter to track how many floats we've written to the buffer
     int dataIndex = 0;
     int activeParticles = 0;
 
-    // Loop through all particles and copy the active particle data to our buffer
     for (const Particle &p : this->particles)
     {
         if (p.Life > 0.0f)
@@ -149,10 +130,8 @@ void ParticleEmitter::Draw()
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE); // Additive blending for fire/smoke
 
-        // Perform the instanced draw call
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, activeParticles);
 
-        // Reset state
         glBindVertexArray(0);
         glDisable(GL_BLEND);
     }
@@ -160,7 +139,6 @@ void ParticleEmitter::Draw()
 
 unsigned int ParticleEmitter::firstUnusedParticle()
 {
-    // Cycle through particles starting from the last used one
     for (unsigned int i = lastUsedParticle; i < this->particles.size(); i++)
     {
         if (this->particles[i].Life <= 0.0f)
@@ -170,8 +148,6 @@ unsigned int ParticleEmitter::firstUnusedParticle()
         }
     }
 
-    // If no dead particles are found from the last used position,
-    // search from the beginning of the array
     for (unsigned int i = 0; i < lastUsedParticle; ++i)
     {
         if (this->particles[i].Life <= 0.0f)
@@ -181,7 +157,6 @@ unsigned int ParticleEmitter::firstUnusedParticle()
         }
     }
 
-    // If all particles are active, overwrite the first one (oldest)
     lastUsedParticle = 0;
     return 0;
 }

@@ -183,7 +183,7 @@ void SceneManager::RenderParticles(float dt)
             newParticle.Life = 1.5f;
             // newParticle.Color = glm::vec4(1.0f, 0.5f, 0.2f, 1.0f);
             newParticle.Color = emitter.Color;
-            newParticle.Size = 0.1f;
+            newParticle.Size = 0.05f;
             emitter.SpawnParticle(newParticle);
         }
 
@@ -475,6 +475,8 @@ void SceneManager::LoadScene(const std::string &path)
         }
         else if (type == NodeType::Light)
         {
+            if (parent->type == NodeType::Particles)
+                return;
             addToParent(name, type, parent->ID, LightType::DIRECTIONAL);
 
             // Set light data if available
