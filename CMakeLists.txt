@@ -6,11 +6,16 @@ set(CMAKE_CXX_STANDARD 17)
 # Set output exe directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+set(BULLET_ROOT "${CMAKE_SOURCE_DIR}/extern/bullet3-master")
+set(BULLET_INCLUDE_DIR "${BULLET_ROOT}/src")
+set(BULLET_LIB_DIR "${BULLET_ROOT}/build/lib")
+
 # Include paths
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/imgui
     ${CMAKE_SOURCE_DIR}/include/imgui/backend
+    ${BULLET_INCLUDE_DIR}
 )
 
 # Link directories
@@ -39,4 +44,7 @@ target_link_libraries(fynix
     gdi32
     user32
     kernel32
+    libBulletDynamics.a
+    libBulletCollision.a
+    libLinearMath.a
 )

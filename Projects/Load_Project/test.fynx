@@ -120,7 +120,7 @@
           1.0
         ],
         "id": 6,
-        "maxParticles": 500,
+        "maxParticles": 5000,
         "name": "Fire",
         "position": [
           0.0,
