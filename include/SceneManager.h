@@ -50,6 +50,7 @@ public:
     ShaderManager *sm = nullptr;
 
     bool drawLights = true;
+    bool drawPhysics = true;
 
     std::string nodeTypeToString(NodeType type);
     NodeType stringToNodeType(const std::string &str);

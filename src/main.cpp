@@ -24,6 +24,8 @@
 
 #include "ParticleSystem.h"
 
+#include "PhysicsEngine.h"
+
 using namespace std;
 
 extern "C"
@@ -179,12 +181,18 @@ int main()
     lightShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
     lightShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
 
-    // ParticleEmitter emitter(particleShader, 5000);
-
     particleShader.use();
 
     particleShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
     particleShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
+
+    PhysicsEngine physicsEngine;
+
+    physicsEngine.createBoxRigidBody(glm::vec3(0.0f, -5.0f, 0.0f), glm::vec3(5.0f, 1.0f, 1.0f), 0.0f);
+
+    // Create a dynamic falling cube
+    // Position: (0, 10, 0), Size: (1, 1, 1), Mass: 1.0f (makes it dynamic)
+    physicsEngine.createBoxRigidBody(glm::vec3(0.0f, 30.0f, 1.0f), glm::vec3(1.0f, 1.0f, 2.0f), 1.0f);
 
     cout << "[FYNiX] FYNiX: Framework for Yet-to-be Named eXperiences is ready!" << endl;
 
@@ -213,23 +221,12 @@ int main()
         particleShader.use();
         particleShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
 
+        //===== PHYSICS =====
+        physicsEngine.update(deltaTime);
+
         //===== RENDER SECTION =====
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // for (int i = 0; i < 10; i++)
-        // {
-        //     Particle newParticle;
-        //     newParticle.Position = glm::vec3(0.0f, 0.0f, 0.0f);
-        //     newParticle.Velocity = glm::vec3((rand() % 100 - 50) / 10.0f, 5.f, (rand() % 100 - 50) / 10.0f);
-        //     newParticle.Life = 1.5f;
-        //     newParticle.Color = glm::vec4(1.0f, 0.5f, 0.2f, 1.0f);
-        //     newParticle.Size = 0.1f;
-        //     emitter.SpawnParticle(newParticle);
-        // }
-
-        // emitter.Update(deltaTime);
-        // emitter.Draw();
 
         defaultShader.use();
 
@@ -239,6 +236,10 @@ int main()
             scene.RenderLights(lightShader);
         if (scene.particleEmitters.size() > 0)
             scene.RenderParticles(deltaTime);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        physicsEngine.Draw(lightShader);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         gui.Render();
         //===== SWAP BUFFERS AND POLL EVENTS ===

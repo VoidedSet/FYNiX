@@ -1,0 +1,138 @@
+{
+  "projectName": "",
+  "scenegraph": {
+    "children": [
+      {
+        "color": [
+          0.4152047038078308,
+          1.0,
+          0.5588386058807373
+        ],
+        "id": 1,
+        "name": "NewNode",
+        "position": [
+          0.46000000834465027,
+          0.5400000214576721,
+          -2.2799999713897705
+        ],
+        "type": "Light"
+      },
+      {
+        "color": [
+          0.5964908599853516,
+          0.0,
+          1.0
+        ],
+        "id": 2,
+        "name": "NewNode",
+        "position": [
+          0.0,
+          8.813786187420803e-39,
+          2.6500000953674316
+        ],
+        "type": "Light"
+      },
+      {
+        "id": 3,
+        "modelPath": "assets/dancer.gltf",
+        "name": "NewNode",
+        "position": [
+          1.0,
+          1.0,
+          1.3899999856948853
+        ],
+        "rotation": [
+          2.009999990463257,
+          1.0,
+          1.0
+        ],
+        "scale": [
+          9.999999747378752e-05,
+          9.999999747378752e-05,
+          9.999999747378752e-05
+        ],
+        "type": "Model"
+      },
+      {
+        "id": 4,
+        "modelPath": "assets/running_guy.gltf",
+        "name": "NewNode",
+        "position": [
+          1.0,
+          0.8600000143051147,
+          -1.159999966621399
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224
+        ],
+        "type": "Model"
+      },
+      {
+        "id": 5,
+        "modelPath": "assets/dancer.gltf",
+        "name": "NewNode",
+        "position": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "rotation": [
+          -1.0,
+          1.0,
+          1.0
+        ],
+        "scale": [
+          9.999999747378752e-05,
+          9.999999747378752e-05,
+          9.999999747378752e-05
+        ],
+        "type": "Model"
+      },
+      {
+        "children": [
+          {
+            "color": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "id": 7,
+            "name": "Fire",
+            "position": [
+              0.0,
+              8.812452151282766e-39,
+              0.0
+            ],
+            "type": "Light"
+          }
+        ],
+        "color": [
+          1.0,
+          0.5,
+          0.20000000298023224,
+          1.0
+        ],
+        "id": 6,
+        "maxParticles": 5000,
+        "name": "Fire",
+        "position": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "shdaerName": "particle",
+        "type": "ParticleEmitter"
+      }
+    ],
+    "id": 0,
+    "name": "Root",
+    "type": "Root"
+  }
+}
