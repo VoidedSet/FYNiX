@@ -57,7 +57,7 @@ public:
 
     bool drawLights = true,
          drawPhysics = true,
-         simulate = true;
+         simulate = false;
 
     std::string nodeTypeToString(NodeType type);
     NodeType stringToNodeType(const std::string &str);

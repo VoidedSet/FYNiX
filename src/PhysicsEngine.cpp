@@ -64,9 +64,6 @@ void PhysicsEngine::update(float deltaTime)
 
 void PhysicsEngine::Draw(Shader &shader)
 {
-    if (!drawDebugMesh)
-        return;
-
     shader.use();
 
     btCollisionObjectArray &objects = m_dynamicsWorld->getCollisionObjectArray();

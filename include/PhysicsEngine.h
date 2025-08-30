@@ -16,7 +16,6 @@ enum class RigidBodyShape
 class PhysicsEngine
 {
 public:
-    bool drawDebugMesh = true;
     Mesh debugMesh = Mesh(MeshType::CUBE);
 
     PhysicsEngine();

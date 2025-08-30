@@ -8,7 +8,6 @@
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
-#include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
 #include "SceneManager.h"
@@ -23,7 +22,8 @@ public:
 
 private:
     SceneManager *scene;
-    int windowWidth, windowHeight, selectedNodeID = 0;
+    int windowWidth, windowHeight;
+    int selectedNodeID = -1;
     static ImGuiIO io;
 
     void DrawSidePanel(int windowWidth, int windowHeight);

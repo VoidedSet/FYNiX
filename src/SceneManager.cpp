@@ -244,7 +244,6 @@ void SceneManager::RenderPhysics(float dt, Shader &shader)
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         physics->Draw(shader);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        std::cout << "test" << std::endl;
     }
 }
 
