@@ -20,7 +20,7 @@ PhysicsEngine::PhysicsEngine()
 
     m_dynamicsWorld->setGravity(btVector3(0, -10, 0));
 
-    std::cout << "PhysicsEngine Initialized" << std::endl;
+    std::cout << "[Physics] Physics Engine Initialized" << std::endl;
 }
 
 PhysicsEngine::~PhysicsEngine()
@@ -50,7 +50,7 @@ PhysicsEngine::~PhysicsEngine()
     delete m_dispatcher;
     delete m_collisionConfiguration;
 
-    std::cout << "PhysicsEngine Destroyed" << std::endl;
+    std::cout << "[Physics] Physics Engine Destroyed" << std::endl;
 }
 
 void PhysicsEngine::update(float deltaTime)
@@ -65,9 +65,7 @@ void PhysicsEngine::update(float deltaTime)
 void PhysicsEngine::Draw(Shader &shader)
 {
     if (!drawDebugMesh)
-    {
         return;
-    }
 
     shader.use();
 
@@ -111,7 +109,7 @@ btDiscreteDynamicsWorld *PhysicsEngine::getDynamicsWorld()
     return m_dynamicsWorld;
 }
 
-void PhysicsEngine::createBoxRigidBody(glm::vec3 position, glm::vec3 size, float mass)
+btRigidBody *PhysicsEngine::createBoxRigidBody(glm::vec3 position, glm::vec3 size, float mass)
 {
     btCollisionShape *boxShape = new btBoxShape(btVector3(size.x * 0.5f, size.y * 0.5f, size.z * 0.5f));
     m_collisionShapes.push_back(boxShape);
@@ -130,4 +128,8 @@ void PhysicsEngine::createBoxRigidBody(glm::vec3 position, glm::vec3 size, float
     btRigidBody *body = new btRigidBody(rbInfo);
 
     m_dynamicsWorld->addRigidBody(body);
+
+    std::cout << "[Physics] Created a Rigid Body!" << std::endl;
+
+    return body;
 }

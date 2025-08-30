@@ -5,6 +5,14 @@
 
 #include "Mesh.h"
 
+// only cube operational
+enum class RigidBodyShape
+{
+    CUBE,
+    CAPSULE,
+    SPHERE
+};
+
 class PhysicsEngine
 {
 public:
@@ -19,7 +27,9 @@ public:
 
     btDiscreteDynamicsWorld *getDynamicsWorld();
 
-    void createBoxRigidBody(glm::vec3 position, glm::vec3 size, float mass);
+    btRigidBody *createBoxRigidBody(glm::vec3 position, glm::vec3 size, float mass);
+
+    void setGravity(int gravity) { m_dynamicsWorld->setGravity(btVector3(0, -gravity, 0)); }
 
 private:
     btDefaultCollisionConfiguration *m_collisionConfiguration;

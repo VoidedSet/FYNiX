@@ -16,6 +16,8 @@ std::string SceneManager::nodeTypeToString(NodeType type)
         return "Root";
     case NodeType::Particles:
         return "ParticleEmitter";
+    case NodeType::RigidBody:
+        return "RigidBody";
     default:
         return "Unknown";
     }
@@ -33,6 +35,8 @@ NodeType SceneManager::stringToNodeType(const std::string &str)
         return NodeType::Root;
     if (str == "ParticleEmitter")
         return NodeType::Particles;
+    if (str == "RigidBody")
+        return NodeType::RigidBody;
     return NodeType::Empty;
 }
 
@@ -42,6 +46,8 @@ SceneManager::SceneManager(const std::string &projectPath) : projectPath(project
     nextID = 1;
 
     std::cout << "[SceneManager] Initializing SceneManager with project path: " << projectPath << std::endl;
+
+    // physics = new PhysicsEngine;
 }
 
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType)
@@ -118,6 +124,42 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, RigidBodyShape shape, float mass)
+{
+    unsigned int assignedID = nextID;
+    Node *parentNode = find_node(parentID);
+    if (!parentNode)
+    {
+        std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
+        return;
+    }
+
+    if (physics == nullptr)
+    {
+        physics = new PhysicsEngine;
+        if (!physics)
+        {
+            std::cerr << "[Physics] Failed to init Physics Engine." << std::endl;
+            return;
+        }
+    }
+
+    nextID = assignedID + 1;
+    Node *newNode = new Node({assignedID, name, type, parentNode, {}});
+    nodes.push_back(newNode);
+    parentNode->children.push_back(newNode);
+
+    btRigidBody *body = nullptr;
+
+    if (shape == RigidBodyShape::CUBE)
+    {
+        body = physics->createBoxRigidBody(glm::vec3(1.f), glm::vec3(1.f), mass);
+        rigidBodies[newNode->ID] = body;
+    }
+
+    std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
+}
+
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID)
 {
     unsigned int assignedID = nextID;
@@ -189,6 +231,20 @@ void SceneManager::RenderParticles(float dt)
 
         emitter.Update(dt);
         emitter.Draw();
+    }
+}
+
+void SceneManager::RenderPhysics(float dt, Shader &shader)
+{
+    if (simulate)
+        physics->update(dt);
+
+    if (drawPhysics && physics)
+    {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        physics->Draw(shader);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        std::cout << "test" << std::endl;
     }
 }
 
@@ -294,6 +350,14 @@ ParticleEmitter *SceneManager::getEmitterByID(unsigned int ID)
     for (ParticleEmitter &emitter : particleEmitters)
         if (emitter.ID == ID)
             return &emitter;
+    return nullptr;
+}
+
+btRigidBody *SceneManager::getRigidBodyByID(unsigned int ID)
+{
+    auto it = rigidBodies.find(ID);
+    if (it != rigidBodies.end())
+        return it->second;
     return nullptr;
 }
 

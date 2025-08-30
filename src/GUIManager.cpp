@@ -40,7 +40,6 @@ void RedirectOutputToConsoleBuffer()
 {
     g_originalCoutBuf = std::cout.rdbuf(&g_consoleBuffer);
     g_originalCerrBuf = std::cerr.rdbuf(&g_consoleBuffer);
-    // You can also redirect printf by using freopen but less clean
 }
 
 void RestoreOutput()
@@ -55,7 +54,7 @@ float GetProcessRAMUsageMB();
 float GetRAMUsagePercent();
 
 void DrawConsolePanel(int windowWidth, int windowHeight);
-void drawResourceOverlay(bool *p_open = nullptr); // Optional pointer
+void drawResourceOverlay(bool *p_open = nullptr);
 
 static bool showAddNodeModal = false;
 static char modelPathInput[256] = "", shaderName[256] = "";
@@ -65,9 +64,10 @@ static char inputBuffer[256] = "";
 
 static char nodeNameInput[128] = "NewNode";
 static int selectedNodeType = 1, ParentNodeId = 0, selectedLightType = 1, maxParticles = 0;
-static bool drawLight = true;
+static float rigidBodyMass = 0.f;
+static bool drawLight = true, drawPhysics = true, simulatePhysics = false;
 
-static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Particles", "Empty"};
+static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Particles", "RigidBody", "Empty"};
 static const char *lightTypeLabels[] = {"Directional Light", "Point Light", "Spot Light", "Sun Light"};
 
 GUIManager::GUIManager(GLFWwindow *window, SceneManager &scene, int windowWidth, int windowHeight)
@@ -135,18 +135,19 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
         ImGui::Text("Scene Options");
         ImGui::Dummy(ImVec2(0.0f, 5.0f));
         if (ImGui::Button("Add Node"))
-        {
             showAddNodeModal = true;
-        }
+
         if (ImGui::Checkbox("Draw Light?", &drawLight))
-        {
             scene->drawLights = drawLight;
-        }
+
+        if (ImGui::Checkbox("Draw Rigid Bodies?", &drawPhysics))
+            scene->drawPhysics = drawPhysics;
+
+        if (ImGui::Checkbox("Simulate Physics?", &simulatePhysics))
+            scene->simulate = simulatePhysics;
 
         if (ImGui::Button(("Save Scene")))
-        {
             scene->saveScene();
-        }
 
         ImGui::Separator();
         ImGui::Dummy(ImVec2(0.0f, 5.0f));
@@ -159,13 +160,9 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
             Node *selectedNode = scene->find_node(static_cast<unsigned int>(selectedNodeID)); // Implement getNodeById()
 
             if (selectedNode)
-            {
-                selectedItemInspector(selectedNode); // Now passes actual node
-            }
+                selectedItemInspector(selectedNode);
             else
-            {
                 ImGui::Text("No node selected.");
-            }
         }
     }
     ImGui::End();
@@ -210,6 +207,12 @@ void GUIManager::DrawAddNodeModal()
             ImGui::InputInt("##MaxParticles", &maxParticles);
         }
 
+        if (selectedNodeType == (int)NodeType::RigidBody)
+        {
+            ImGui::Text("Mass: ");
+            ImGui::InputFloat("##0 for static", &rigidBodyMass, 0.01f, 1.0f);
+        }
+
         if (ImGui::Button("OK"))
         {
             std::string nameStr = nodeNameInput;
@@ -223,6 +226,8 @@ void GUIManager::DrawAddNodeModal()
                 scene->addToParent(nameStr, type, ParentNodeId, (LightType)selectedLightType);
             else if (type == NodeType::Particles)
                 scene->addToParent(nameStr, type, ParentNodeId, shaderNamestr, (unsigned int)maxParticles);
+            else if (type == NodeType::RigidBody)
+                scene->addToParent(nameStr, type, ParentNodeId, RigidBodyShape::CUBE, rigidBodyMass);
             else
                 scene->addToParent(nameStr, type, ParentNodeId);
 
@@ -395,6 +400,91 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
                 selectedLight->color = glm::vec3(color);
             }
         }
+        // In GUIManager.cpp, inside selectedItemInspector function...
+        else if (selectedNode->type == NodeType::RigidBody)
+        {
+            btRigidBody *body = scene->getRigidBodyByID(selectedNode->ID);
+            if (!body)
+                return;
+
+            // --- TRANSFORM ---
+            btTransform trans = body->getWorldTransform();
+            btVector3 pos = trans.getOrigin();
+            btQuaternion rot = trans.getRotation();
+
+            glm::vec3 position(pos.x(), pos.y(), pos.z());
+            glm::quat rotationQuat(rot.w(), rot.x(), rot.y(), rot.z());
+            glm::vec3 rotation = glm::degrees(glm::eulerAngles(rotationQuat));
+
+            btVector3 scaleVec = body->getCollisionShape()->getLocalScaling();
+            glm::vec3 scale(scaleVec.x(), scaleVec.y(), scaleVec.z());
+
+            bool transformChanged = false;
+            if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
+                transformChanged = true;
+            if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 1.0f))
+                transformChanged = true;
+            if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f))
+            {
+                body->getCollisionShape()->setLocalScaling(btVector3(scale.x, scale.y, scale.z));
+                // NOTE: Make sure scene->physics is the correct pointer to your PhysicsEngine
+                scene->physics->getDynamicsWorld()->updateSingleAabb(body);
+            }
+
+            if (transformChanged)
+            {
+                trans.setOrigin(btVector3(position.x, position.y, position.z));
+                glm::quat newRotQuat = glm::quat(glm::radians(rotation));
+                trans.setRotation(btQuaternion(newRotQuat.x, newRotQuat.y, newRotQuat.z, newRotQuat.w));
+
+                body->setWorldTransform(trans);
+
+                // --- THE FIX ---
+                // Immediately synchronize the graphical representation
+                if (body->getMotionState())
+                {
+                    body->getMotionState()->setWorldTransform(trans);
+                }
+                // --- END FIX ---
+
+                body->activate(true);
+            }
+
+            ImGui::Separator();
+
+            // --- PHYSICS PROPERTIES ---
+            // Safely get mass, checking for static objects to prevent division by zero
+            float mass = (body->getInvMass() == 0.0f) ? 0.0f : 1.0f / body->getInvMass();
+            if (ImGui::DragFloat("Mass", &mass, 0.1f, 0.0f, 1000.0f))
+            {
+                // Mass must be non-negative. Setting to 0 makes it static.
+                if (mass >= 0.0f)
+                {
+                    btVector3 localInertia(0, 0, 0);
+                    // Only calculate inertia for dynamic objects
+                    if (mass > 0.0f)
+                    {
+                        body->getCollisionShape()->calculateLocalInertia(mass, localInertia);
+                    }
+                    body->setMassProps(mass, localInertia);
+                }
+            }
+
+            // Friction
+            float friction = body->getFriction();
+            if (ImGui::DragFloat("Friction", &friction, 0.05f, 0.0f, 5.0f))
+            {
+                body->setFriction(friction);
+            }
+
+            // Restitution (Bounciness)
+            float restitution = body->getRestitution();
+            if (ImGui::DragFloat("Restitution", &restitution, 0.05f, 0.0f, 1.0f))
+            {
+                body->setRestitution(restitution);
+            }
+        }
+
         ImGui::Dummy(ImVec2(0.0f, 5.0f));
 
         if (ImGui::Button("Delete Node"))
