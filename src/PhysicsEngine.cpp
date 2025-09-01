@@ -130,3 +130,35 @@ btRigidBody *PhysicsEngine::createBoxRigidBody(glm::vec3 position, glm::vec3 siz
 
     return body;
 }
+
+void PhysicsEngine::deleteRigidBody(btRigidBody *body)
+{
+    if (!body)
+    {
+        return;
+    }
+
+    // 1. Remove the rigid body from the dynamics world.
+    m_dynamicsWorld->removeRigidBody(body);
+
+    // 2. Delete the motion state.
+    if (body->getMotionState())
+    {
+        delete body->getMotionState();
+    }
+
+    // 3. Delete the collision shape.
+    btCollisionShape *shape = body->getCollisionShape();
+    if (shape)
+    {
+        // Remove the shape from our tracking vector.
+        // The erase-remove idiom is a clean way to do this.
+        m_collisionShapes.erase(std::remove(m_collisionShapes.begin(), m_collisionShapes.end(), shape), m_collisionShapes.end());
+        delete shape;
+    }
+
+    // 4. Finally, delete the rigid body itself.
+    delete body;
+
+    std::cout << "[Physics] Deleted a Rigid Body!" << std::endl;
+}

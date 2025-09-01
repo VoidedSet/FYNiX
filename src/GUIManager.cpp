@@ -25,9 +25,6 @@ namespace
     bool drawPhysics = true;
     bool simulatePhysics = false;
 
-    // --- Console State ---
-    bool consoleAutoScroll = true;
-
     // --- Resource Overlay State ---
     constexpr int FPS_HISTORY_COUNT = 90;
     float fps_history[FPS_HISTORY_COUNT] = {};
@@ -35,7 +32,7 @@ namespace
 
     // --- UI Layout Constants ---
     constexpr float SIDE_PANEL_WIDTH = 350.0f;
-    constexpr float CONSOLE_HEIGHT = 220.0f;
+    constexpr float CONSOLE_HEIGHT = 320.0f;
 
     // --- Forward declarations for static helper functions ---
     void InspectModelNode(SceneManager *scene, Node *selectedNode);
@@ -52,6 +49,7 @@ class ImGuiConsoleBuffer : public std::stringbuf
 public:
     std::vector<std::string> lines;
     std::mutex mutex;
+    static constexpr size_t MAX_CONSOLE_LINES = 500;
 
     void clear()
     {
@@ -78,6 +76,12 @@ public:
             lines.push_back(s.substr(start));
         }
         str(""); // Clear internal buffer
+
+        if (lines.size() > MAX_CONSOLE_LINES)
+        {
+            lines.erase(lines.begin(), lines.begin() + (lines.size() - MAX_CONSOLE_LINES));
+        }
+
         return 0;
     }
 };
@@ -539,7 +543,7 @@ namespace
             body->activate(true);
         }
 
-        if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f))
+        if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f, 0.1f))
         {
             body->getCollisionShape()->setLocalScaling(btVector3(scale.x, scale.y, scale.z));
             scene->physics->getDynamicsWorld()->updateSingleAabb(body);
@@ -573,32 +577,27 @@ namespace
 
 static void DrawConsolePanel(int windowWidth, int windowHeight)
 {
-    ImGui::SetNextWindowPos(ImVec2(0, windowHeight - CONSOLE_HEIGHT), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(windowWidth - SIDE_PANEL_WIDTH, CONSOLE_HEIGHT), ImGuiCond_Always);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    const float consoleHeight = 180.0f;
+
+    ImGui::SetNextWindowPos(ImVec2(0, windowHeight - consoleHeight - 70), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth - SIDE_PANEL_WIDTH, consoleHeight), ImGuiCond_Always);
+
+    static bool autoScroll = true; // Tracks if we should auto-scroll
 
     if (ImGui::Begin("Console"))
     {
-        if (ImGui::Button("Clear"))
-            g_consoleBuffer.clear();
-        ImGui::SameLine();
-        ImGui::Checkbox("Auto-scroll", &consoleAutoScroll);
-        ImGui::Separator();
+        ImGui::BeginChild("LogRegion", ImVec2(0, -30), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
-        ImGui::BeginChild("LogRegion", ImVec2(0, 0), false, ImGuiWindowFlags_HorizontalScrollbar);
         std::lock_guard<std::mutex> lock(g_consoleBuffer.mutex);
         for (const auto &line : g_consoleBuffer.lines)
-        {
-            ImGui::TextUnformatted(line.c_str());
-        }
-        if (consoleAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-        {
-            ImGui::SetScrollHereY(1.0f);
-        }
+            ImGui::TextWrapped("%s", line.c_str());
+
+        if (autoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+            ImGui::SetScrollHereY(1.0f); // Only scroll if at the bottom
+
         ImGui::EndChild();
     }
     ImGui::End();
-    ImGui::PopStyleVar();
 }
 
 static void DrawResourceOverlay()

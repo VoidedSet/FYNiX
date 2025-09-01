@@ -322,6 +322,18 @@ void SceneManager::deleteNode(unsigned int ID)
         else
             std::cerr << "[SceneManager] Warning: No Particle Emitter found for node ID " << nodeToDelete->ID << std::endl;
     }
+    if (nodeToDelete->type == NodeType::RigidBody)
+    {
+        btRigidBody *body = getRigidBodyByID(nodeToDelete->ID);
+        if (!body)
+        {
+            std::cerr << "[SceneManager] Warning: No Rigid Body found for node ID " << nodeToDelete->ID << std::endl;
+            return;
+        }
+
+        physics->deleteRigidBody(body);
+        rigidBodies.erase(nodeToDelete->ID);
+    }
 
     std::cout << "[SceneManager] Deleting node with ID: " << nodeToDelete->ID << " and name: " << nodeToDelete->name << std::endl;
     nodes.erase(std::remove(nodes.begin(), nodes.end(), nodeToDelete), nodes.end());

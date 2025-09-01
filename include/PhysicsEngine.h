@@ -2,6 +2,7 @@
 
 #include "btBulletDynamicsCommon.h"
 #include <vector>
+#include <algorithm>
 
 #include "Mesh.h"
 
@@ -27,6 +28,7 @@ public:
     btDiscreteDynamicsWorld *getDynamicsWorld();
 
     btRigidBody *createBoxRigidBody(glm::vec3 position, glm::vec3 size, float mass);
+    void deleteRigidBody(btRigidBody *body);
 
     void setGravity(int gravity) { m_dynamicsWorld->setGravity(btVector3(0, -gravity, 0)); }
 
