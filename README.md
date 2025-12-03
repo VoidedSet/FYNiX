@@ -24,24 +24,24 @@ Originally started as a 10-day challenge, it's now evolving into a long-term lea
 
 ## ✅ Core Features (Implemented)
 
-- ✅ Load 3D models with materials (textures & color fallback)
-- ✅ Load and play skeletal animations (basic skinning + playback)
-- ✅ Scene graph and entity management system
-- ✅ ImGui-based editor GUI with transform manipulation
-- ✅ Scene saving and loading (.fynx)
-- ✅ Basic lighting: Phong point lights
-- ✅ Animation controls via GUI (switch, loop, etc.)
-- ✅ Particle system (custom emitters)
+- Load 3D models with materials (textures & color fallback)
+- Load and play skeletal animations (basic skinning + playback)
+- Scene graph and entity management system
+- ImGui-based editor GUI with transform manipulation
+- Scene saving and loading (.fynx)
+- Basic lighting: Phong point lights
+- Animation controls via GUI (switch, loop, etc.)
+- Particle system (custom emitters)
 
 ---
 
 ## 🔜 In Progress / Upcoming
 
-- 🔲 Advanced lighting (spotlight, falloff, shadows)
-- 🔲 Material system (metallic, specular, roughness, alpha, etc.)
-- 🔲 Skybox + environment lighting
-- 🔲 Physics system (rigidbodies, basic collision)
-- 🔲 3D audio system with spatial sound
+- Advanced lighting (spotlight, falloff, shadows)
+- Material system (metallic, specular, roughness, alpha, etc.)
+- Skybox + environment lighting
+- Physics system (rigidbodies, basic collision)
+- 3D audio system with spatial sound
 
 ---
 
