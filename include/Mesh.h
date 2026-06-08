@@ -30,7 +30,7 @@ enum MeshType
 {
     CUBE,
     SPHERE,
-    PLANE,
+    PLANE
 };
 
 class Mesh
