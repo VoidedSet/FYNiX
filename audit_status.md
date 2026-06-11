@@ -8,9 +8,9 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 1.1 | Parent-child transform propagation is completely absent | 🔴 Bug | **Done** |
 | 1.2 | Node ID lookup is O(n) linear search across a flat vector | 🔴 Bug | **Done** |
 | 1.3 | `find_node` has a dead guard that never fires | 🔴 Bug | **Done** |
-| 1.4 | `deleteNode` reparents children but doesn't delete their components | 🟠 Caveat | Left to fix |
-| 1.5 | Deleting a `Particles` node accesses children after clearing them (leak) | 🟠 Caveat | Left to fix |
-| 1.6 | `root` node is allocated in header at class definition time | 🟠 Caveat | Left to fix |
+| 1.4 | `deleteNode` reparents children but doesn't delete their components | 🟠 Caveat | **Done** |
+| 1.5 | Deleting a `Particles` node accesses children after clearing them (leak) | 🟠 Caveat | **Done** |
+| 1.6 | `root` node is allocated in header at class definition time | 🟠 Caveat | **Done** |
 | 1.7 | No concept of "world transform" vs "local transform" on nodes | 🟡 Improvement | **Done** |
 | 1.8 | `nextID` is not reused after deletions (ID fragmentation) | 🟡 Improvement | Left to fix |
 | **2** | **Physics System** | | |
@@ -83,7 +83,7 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 8.7 | Particle size is hardcoded to `0.05f` at spawn | 🟡 Improvement | Left to fix |
 | **9** | **Memory Management** | | |
 | 9.1 | `SceneManager::nodes` stores raw pointers and leaks them at shutdown | 🔴 Bug | Left to fix |
-| 9.2 | `SceneManager` has no destructor | 🔴 Bug | Left to fix |
+| 9.2 | `SceneManager` has no destructor | 🔴 Bug | **Done** |
 | 9.3 | `Model` copies in `std::vector` deep-copy raw GL handles, potential double free | 🟠 Caveat | Left to fix |
 | 9.4 | `Texture` copy-constructor duplicates GL handles, potential double free | 🟠 Caveat | Left to fix |
 | 9.5 | `Model` default position/rotation are `(1,1,1)` instead of identity | 🟠 Caveat | **Done** |

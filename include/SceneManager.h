@@ -48,11 +48,7 @@ class SceneManager
 public:
     unsigned int nextID;
 
-    Node *root = new Node({0,
-                           "Root",
-                           NodeType::Root,
-                           nullptr,
-                           {}});
+    Node *root = nullptr;
     std::vector<Node *> nodes;
     std::unordered_map<unsigned int, Node *> nodeMap;
     std::vector<Model> models;
@@ -72,6 +68,7 @@ public:
     NodeType stringToNodeType(const std::string &str);
 
     SceneManager(const std::string &projectPath);
+    ~SceneManager();
 
     // add a light node to parent
     void addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, unsigned int forcedID = 0);
@@ -126,4 +123,6 @@ private:
     std::vector<PendingModelLoad> pendingModelLoads;
     std::mutex pendingLoadsMutex;
     std::unordered_map<unsigned int, btTransform> initialTransforms;
+
+    void initializeChildTransform(Node *newNode);
 };

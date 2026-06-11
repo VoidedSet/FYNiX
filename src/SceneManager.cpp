@@ -44,6 +44,7 @@ NodeType SceneManager::stringToNodeType(const std::string &str)
 
 SceneManager::SceneManager(const std::string &projectPath) : projectPath(projectPath)
 {
+    root = new Node{0, "Root", NodeType::Root, nullptr, {}};
     nodes.push_back(root);
     nodeMap[root->ID] = root;
     nextID = 1;
@@ -51,6 +52,23 @@ SceneManager::SceneManager(const std::string &projectPath) : projectPath(project
     std::cout << "[SceneManager] Initializing SceneManager with project path: " << projectPath << std::endl;
 
     // physics = new PhysicsEngine;
+}
+
+SceneManager::~SceneManager()
+{
+    std::cout << "[SceneManager] Shutting down and deleting all scene nodes." << std::endl;
+    for (Node *node : nodes)
+    {
+        delete node;
+    }
+    nodes.clear();
+    nodeMap.clear();
+
+    if (physics)
+    {
+        delete physics;
+        physics = nullptr;
+    }
 }
 
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, unsigned int forcedID)
@@ -377,15 +395,10 @@ void SceneManager::deleteNode(unsigned int ID)
         siblings.erase(std::remove(siblings.begin(), siblings.end(), nodeToDelete), siblings.end());
     }
 
-    if (!nodeToDelete->children.empty())
+    // Delete all children recursively
+    while (!nodeToDelete->children.empty())
     {
-        for (auto &childern : nodeToDelete->children)
-        {
-            childern->parent = nodeToDelete->parent;
-            nodeToDelete->parent->children.push_back(childern);
-        }
-
-        nodeToDelete->children.clear();
+        deleteNode(nodeToDelete->children.back()->ID);
     }
 
     if (nodeToDelete->type == NodeType::Model)
@@ -417,10 +430,6 @@ void SceneManager::deleteNode(unsigned int ID)
     }
     if (nodeToDelete->type == NodeType::Particles)
     {
-        if (!nodeToDelete->children.empty())
-        {
-            deleteNode(nodeToDelete->children[0]->ID);
-        }
         auto it = std::find_if(particleEmitters.begin(), particleEmitters.end(), [&](const ParticleEmitter &m)
                                { return m.ID == nodeToDelete->ID; });
         if (it != particleEmitters.end())
@@ -925,4 +934,77 @@ void SceneManager::ResetPhysics()
         }
     }
     std::cout << "[Physics] Physics world reset to initial positions." << std::endl;
+}
+
+void SceneManager::initializeChildTransform(Node *newNode)
+{
+    if (newNode && newNode->parent)
+    {
+        glm::mat4 parentWorldMat = getWorldTransform(newNode->parent->ID);
+        glm::mat4 invParent = glm::inverse(parentWorldMat);
+        
+        // Extract translation
+        newNode->position = glm::vec3(invParent[3]);
+        
+        // Extract scale
+        glm::vec3 scale;
+        scale.x = glm::length(glm::vec3(invParent[0]));
+        scale.y = glm::length(glm::vec3(invParent[1]));
+        scale.z = glm::length(glm::vec3(invParent[2]));
+        newNode->scale = scale;
+        
+        // Extract rotation euler angles
+        glm::mat3 rotMat;
+        rotMat[0] = (scale.x > 0.0f) ? (glm::vec3(invParent[0]) / scale.x) : glm::vec3(1, 0, 0);
+        rotMat[1] = (scale.y > 0.0f) ? (glm::vec3(invParent[1]) / scale.y) : glm::vec3(0, 1, 0);
+        rotMat[2] = (scale.z > 0.0f) ? (glm::vec3(invParent[2]) / scale.z) : glm::vec3(0, 0, 1);
+        glm::quat q = glm::quat_cast(rotMat);
+        newNode->rotation = glm::eulerAngles(q);
+        
+        // Sync to component
+        if (newNode->type == NodeType::Model)
+        {
+            Model *model = getModelByID(newNode->ID);
+            if (model)
+            {
+                model->setPosition(newNode->position);
+                model->setRotation(newNode->rotation);
+                model->setScale(newNode->scale);
+            }
+        }
+        else if (newNode->type == NodeType::Light)
+        {
+            Light *light = getLightByID(newNode->ID);
+            if (light)
+            {
+                light->position = newNode->position;
+            }
+        }
+        else if (newNode->type == NodeType::Particles)
+        {
+            ParticleEmitter *emitter = getEmitterByID(newNode->ID);
+            if (emitter)
+            {
+                emitter->Position = newNode->position;
+            }
+        }
+        else if (newNode->type == NodeType::RigidBody)
+        {
+            btRigidBody *body = getRigidBodyByID(newNode->ID);
+            if (body)
+            {
+                btTransform trans = body->getWorldTransform();
+                trans.setOrigin(btVector3(newNode->position.x, newNode->position.y, newNode->position.z));
+                glm::quat q(newNode->rotation);
+                trans.setRotation(btQuaternion(q.x, q.y, q.z, q.w));
+                body->setWorldTransform(trans);
+                if (body->getMotionState())
+                    body->getMotionState()->setWorldTransform(trans);
+                initialTransforms[newNode->ID] = trans;
+                
+                body->getCollisionShape()->setLocalScaling(btVector3(newNode->scale.x, newNode->scale.y, newNode->scale.z));
+                physics->getDynamicsWorld()->updateSingleAabb(body);
+            }
+        }
+    }
 }
