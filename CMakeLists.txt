@@ -24,6 +24,8 @@ link_directories(${CMAKE_SOURCE_DIR}/lib)
 # Source files
 file(GLOB_RECURSE SRC_FILES "${CMAKE_SOURCE_DIR}/src/*.cpp")
 list(APPEND SRC_FILES "${CMAKE_SOURCE_DIR}/src/glad.c")
+list(APPEND SRC_FILES "${CMAKE_SOURCE_DIR}/src/JobSystem.cpp")
+list(REMOVE_DUPLICATES SRC_FILES)
 
 # Executable
 add_executable(fynix ${SRC_FILES})

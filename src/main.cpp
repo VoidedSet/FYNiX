@@ -26,6 +26,8 @@
 
 #include "PhysicsEngine.h"
 
+#include "JobSystem.h"
+
 using namespace std;
 
 extern "C"
@@ -134,6 +136,8 @@ int main()
         return -1;
     }
 
+    JobSystem::Get().Initialize();
+
     std::string projectName = "[" + path.substr(path.find_last_of('/') + 1) + "] FYNiX - Framework for Yet-to-be Named eXperiences";
     Window windowManager((char *)projectName.c_str());
     GLFWwindow *window = windowManager.getWindowObject();
@@ -235,5 +239,6 @@ int main()
 
     gui.Shutdown();
     glfwTerminate();
+    JobSystem::Get().Shutdown();
     return 0;
 }

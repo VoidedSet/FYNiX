@@ -49,12 +49,14 @@ bool LockFreeMPMCQueue::Pop(Job &job)
         intptr_t diff = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos + 1);
 
         if (diff == 0)
+        {
             if (dequeue_pos_.compare_exchange_weak(pos, pos + 1, std::memory_order_relaxed))
                 break;
-            else if (diff < 0)
-                return false;
-            else
-                pos = dequeue_pos_.load(std::memory_order_relaxed);
+        }
+        else if (diff < 0)
+            return false;
+        else
+            pos = dequeue_pos_.load(std::memory_order_relaxed);
     }
 
     job = node->job;
@@ -181,8 +183,10 @@ void JobSystem::WorkerLoop(size_t workerId)
             std::unique_lock<std::mutex> lock(wakeMutex_);
             wakeCond_.wait_for(lock, std::chrono::milliseconds(2), [this, &job, &foundJob]()
                                {
-                if (shutdown_.load(std::memory_order_relaxed)) return true;
-                return useLockFree_.load(std::memory_order_relaxed) ? lockFreeQueue_.Pop(job) : mutexQueue_.Pop(job) ? (foundJob = true) : false; });
+                                   if (shutdown_.load(std::memory_order_relaxed)) return true;
+                                   foundJob = useLockFree_.load(std::memory_order_relaxed) ? lockFreeQueue_.Pop(job) : mutexQueue_.Pop(job);
+                                   return foundJob;
+                               });
 
             if (foundJob)
             {
