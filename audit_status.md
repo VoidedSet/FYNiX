@@ -14,11 +14,11 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 1.7 | No concept of "world transform" vs "local transform" on nodes | 🟡 Improvement | **Done** |
 | 1.8 | `nextID` is not reused after deletions (ID fragmentation) | 🟡 Improvement | Left to fix |
 | **2** | **Physics System** | | |
-| 2.1 | RigidBodies are completely disconnected from Mesh/Light/render nodes | 🔴 Bug | Left to fix |
-| 2.2 | Only `CUBE` shape is implemented (SPHERE/CAPSULE fail silently) | 🔴 Bug | Left to fix |
-| 2.3 | "Add Node" modal always creates CUBE rigid bodies | 🔴 Bug | Left to fix |
-| 2.4 | Physics background simulation runs concurrently with main-thread GUI read (data race) | 🔴 Bug | Left to fix |
-| 2.5 | `createBoxRigidBody` always spawns at hardcoded (1,1,1) size & pos | 🟠 Caveat | Left to fix |
+| 2.1 | RigidBodies are completely disconnected from Mesh/Light/render nodes | 🔴 Bug | **Done** |
+| 2.2 | Only `CUBE` shape is implemented (SPHERE/CAPSULE fail silently) | 🔴 Bug | **Done** |
+| 2.3 | "Add Node" modal always creates CUBE rigid bodies | 🔴 Bug | **Skipped** |
+| 2.4 | Physics background simulation runs concurrently with main-thread GUI read (data race) | 🔴 Bug | **Done** |
+| 2.5 | `createBoxRigidBody` always spawns at hardcoded (1,1,1) size & pos | 🟠 Caveat | **Done** |
 | 2.6 | Scale applied via `setLocalScaling` doesn't recompute inertia | 🟠 Caveat | Left to fix |
 | 2.7 | `setGravity(int)` truncates fractional float gravity values | 🟠 Caveat | Left to fix |
 | 2.8 | `RigidBodyShape::SPHERE` and `CAPSULE` need shapes/debug drawing | 🟡 Improvement | Left to fix |

@@ -143,6 +143,27 @@
               0.0
             ],
             "type": "Light"
+          },
+          {
+            "id": 22,
+            "modelPath": "assets/running_guy.gltf",
+            "name": "NewNode",
+            "position": [
+              -1.0,
+              0.2199999988079071,
+              -1.0
+            ],
+            "rotation": [
+              0.0,
+              -0.0,
+              0.0
+            ],
+            "scale": [
+              0.20000000298023224,
+              0.20000000298023224,
+              0.20000000298023224
+            ],
+            "type": "Model"
           }
         ],
         "id": 20,
@@ -150,8 +171,20 @@
         "name": "sun",
         "position": [
           1.0,
-          1.0,
+          4.460000038146973,
           1.0
+        ],
+        "shape": "CUBE",
+        "type": "RigidBody"
+      },
+      {
+        "id": 23,
+        "mass": 0.0,
+        "name": "NewNode",
+        "position": [
+          0.0,
+          0.0,
+          0.0
         ],
         "shape": "CUBE",
         "type": "RigidBody"

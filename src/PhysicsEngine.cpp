@@ -2,9 +2,102 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/constants.hpp>
 
 #include <iostream>
+
+namespace
+{
+    Mesh CreateSphereMesh(float radius, unsigned int rings = 16, unsigned int sectors = 16)
+    {
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        float const R = 1.0f / (float)(rings - 1);
+        float const S = 1.0f / (float)(sectors - 1);
+
+        for (unsigned int r = 0; r < rings; ++r) {
+            for (unsigned int s = 0; s < sectors; ++s) {
+                float const y = sin(-glm::half_pi<float>() + glm::pi<float>() * r * R);
+                float const x = cos(2 * glm::pi<float>() * s * S) * sin(glm::pi<float>() * r * R);
+                float const z = sin(2 * glm::pi<float>() * s * S) * sin(glm::pi<float>() * r * R);
+
+                Vertex v;
+                v.postition = glm::vec3(x, y, z) * radius;
+                v.normal = glm::vec3(x, y, z);
+                v.texCoords = glm::vec2(s * S, r * R);
+                vertices.push_back(v);
+            }
+        }
+
+        for (unsigned int r = 0; r < rings - 1; ++r) {
+            for (unsigned int s = 0; s < sectors - 1; ++s) {
+                indices.push_back(r * sectors + s);
+                indices.push_back(r * sectors + (s + 1));
+                indices.push_back((r + 1) * sectors + (s + 1));
+
+                indices.push_back(r * sectors + s);
+                indices.push_back((r + 1) * sectors + (s + 1));
+                indices.push_back((r + 1) * sectors + s);
+            }
+        }
+
+        return Mesh(vertices, indices, {});
+    }
+
+    Mesh CreateCapsuleMesh(float radius, float height, unsigned int subdivisions = 16)
+    {
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        unsigned int rings = subdivisions / 2;
+        unsigned int sectors = subdivisions;
+
+        for (unsigned int r = 0; r <= rings; ++r) {
+            float theta = -glm::half_pi<float>() + glm::pi<float>() * r / rings;
+            float y = sin(theta) * radius;
+            float cosTheta = cos(theta);
+
+            if (theta > 0.0f) {
+                y += height * 0.5f;
+            } else {
+                y -= height * 0.5f;
+            }
+
+            for (unsigned int s = 0; s <= sectors; ++s) {
+                float phi = 2 * glm::pi<float>() * s / sectors;
+                float x = cos(phi) * cosTheta * radius;
+                float z = sin(phi) * cosTheta * radius;
+
+                Vertex v;
+                v.postition = glm::vec3(x, y, z);
+                v.normal = glm::normalize(glm::vec3(x, theta > 0.0f ? y - height * 0.5f : y + height * 0.5f, z));
+                v.texCoords = glm::vec2((float)s / sectors, (float)r / rings);
+                vertices.push_back(v);
+            }
+        }
+
+        for (unsigned int r = 0; r < rings; ++r) {
+            for (unsigned int s = 0; s < sectors; ++s) {
+                unsigned int current = r * (sectors + 1) + s;
+                unsigned int next = current + 1;
+                unsigned int bottom = current + (sectors + 1);
+                unsigned int bottomNext = bottom + 1;
+
+                indices.push_back(current);
+                indices.push_back(next);
+                indices.push_back(bottomNext);
+
+                indices.push_back(current);
+                indices.push_back(bottomNext);
+                indices.push_back(bottom);
+            }
+        }
+
+        return Mesh(vertices, indices, {});
+    }
+}
+
 
 PhysicsEngine::PhysicsEngine()
 {

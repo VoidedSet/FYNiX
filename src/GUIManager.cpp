@@ -21,6 +21,7 @@ namespace
     int parentNodeId = 0;
     int selectedNodeType = 1;  // Default to Model
     int selectedLightType = 0; // Default to Directional
+    int selectedRigidBodyShape = 0; // Default to Cube
     int maxParticles = 1000;
     float rigidBodyMass = 1.0f;
     bool drawLights = true;

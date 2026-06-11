@@ -247,17 +247,13 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
 
-    btRigidBody *body = nullptr;
+    btRigidBody *body = physics->createBoxRigidBody(newNode->position, newNode->scale, mass);
+    rigidBodies[newNode->ID] = body;
+    
+    // Save initial transform
+    btTransform trans = body->getWorldTransform();
+    initialTransforms[newNode->ID] = trans;
 
-    if (shape == RigidBodyShape::CUBE)
-    {
-        body = physics->createBoxRigidBody(glm::vec3(1.f), glm::vec3(1.f), mass);
-        rigidBodies[newNode->ID] = body;
-        
-        // Save initial transform
-        btTransform trans = body->getWorldTransform();
-        initialTransforms[newNode->ID] = trans;
-    }
     if (forcedID == 0)
         initializeChildTransform(newNode);
 
@@ -290,6 +286,25 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 void SceneManager::RenderModels(Shader &shader, float deltaTime)
 {
     // 0. Kick off asynchronous physics simulation update
+    if (simulate && !m_wasSimulating)
+    {
+        initialNodePositions.clear();
+        initialNodeRotations.clear();
+        initialNodeScales.clear();
+
+        for (Node *n : nodes)
+        {
+            initialNodePositions[n->ID] = n->position;
+            initialNodeRotations[n->ID] = n->rotation;
+            initialNodeScales[n->ID] = n->scale;
+        }
+        m_wasSimulating = true;
+    }
+    else if (!simulate)
+    {
+        m_wasSimulating = false;
+    }
+
     if (simulate && physics)
     {
         physicsCounter.store(1, std::memory_order_relaxed);
@@ -299,21 +314,6 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
             physics->update(deltaTime);
         };
         JobSystem::Get().Submit(physicsJob);
-    }
-
-    int lightCount = lights.size();
-    shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
-
-    for (int i = 0; i < lightCount; ++i)
-    {
-        std::string posName = "lightPositions[" + std::to_string(i) + "]";
-        std::string colName = "lightColors[" + std::to_string(i) + "]";
-
-        glm::mat4 worldMat = getWorldTransform(lights[i].ID);
-        glm::vec3 worldPos = glm::vec3(worldMat[3]);
-
-        shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldPos)));
-        shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
     }
 
     // 1. Parallel Animation Updates
@@ -333,7 +333,32 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
     }
     JobSystem::Get().Wait(&counter);
 
-    // 2. Main-Thread Drawing Phase
+    // Wait for the background physics update job to complete before syncing and drawing
+    if (simulate && physics)
+    {
+        JobSystem::Get().Wait(&physicsCounter);
+    }
+
+    // Synchronize transforms between physics engine and scene graph
+    SyncTransforms();
+
+    // 2. Set Light Uniforms (using synced transforms)
+    int lightCount = lights.size();
+    shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
+
+    for (int i = 0; i < lightCount; ++i)
+    {
+        std::string posName = "lightPositions[" + std::to_string(i) + "]";
+        std::string colName = "lightColors[" + std::to_string(i) + "]";
+
+        glm::mat4 worldMat = getWorldTransform(lights[i].ID);
+        glm::vec3 worldPos = glm::vec3(worldMat[3]);
+
+        shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldPos)));
+        shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
+    }
+
+    // 3. Main-Thread Drawing Phase
     for (Model &model : models)
     {
         glm::mat4 modelMat = getWorldTransform(model.ID);
@@ -880,7 +905,11 @@ glm::mat4 SceneManager::getWorldTransform(unsigned int id)
     {
         Node *n = *it;
         glm::mat4 localMat = glm::mat4(1.0f);
-        if (n->type == NodeType::Model)
+        if (n->type == NodeType::Root)
+        {
+            localMat = glm::mat4(1.0f);
+        }
+        else if (n->type == NodeType::Model)
         {
             Model *model = getModelByID(n->ID);
             if (model)
@@ -940,8 +969,145 @@ glm::mat4 SceneManager::getWorldTransform(unsigned int id)
     return worldMat;
 }
 
+void SceneManager::SyncTransforms()
+{
+    for (Node *n : nodes)
+    {
+        if (n->type == NodeType::RigidBody)
+        {
+            btRigidBody *body = getRigidBodyByID(n->ID);
+            if (!body) continue;
+
+            if (simulate)
+            {
+                // Sync Bullet -> Scene Graph Node (Simulation Mode)
+                btTransform trans;
+                if (body->getMotionState())
+                    body->getMotionState()->getWorldTransform(trans);
+                else
+                    trans = body->getWorldTransform();
+
+                float m[16];
+                trans.getOpenGLMatrix(m);
+                glm::mat4 worldMat = glm::make_mat4(m);
+
+                // Update the RigidBody node's local transform relative to its parent
+                glm::mat4 parentWorldMat = glm::mat4(1.0f);
+                if (n->parent)
+                    parentWorldMat = getWorldTransform(n->parent->ID);
+
+                glm::mat4 invParent = glm::inverse(parentWorldMat);
+                glm::mat4 localMat = invParent * worldMat;
+
+                // Extract position
+                n->position = glm::vec3(localMat[3]);
+
+                // Extract rotation
+                glm::vec3 scale;
+                scale.x = glm::length(glm::vec3(localMat[0]));
+                scale.y = glm::length(glm::vec3(localMat[1]));
+                scale.z = glm::length(glm::vec3(localMat[2]));
+
+                glm::mat3 rotMat;
+                rotMat[0] = (scale.x > 0.0f) ? (glm::vec3(localMat[0]) / scale.x) : glm::vec3(1, 0, 0);
+                rotMat[1] = (scale.y > 0.0f) ? (glm::vec3(localMat[1]) / scale.y) : glm::vec3(0, 1, 0);
+                rotMat[2] = (scale.z > 0.0f) ? (glm::vec3(localMat[2]) / scale.z) : glm::vec3(0, 0, 1);
+                glm::quat q = glm::quat_cast(rotMat);
+                n->rotation = glm::eulerAngles(q);
+            }
+            else
+            {
+                // Sync Scene Graph -> Bullet (Editor Mode)
+                glm::mat4 parentWorldMat = glm::mat4(1.0f);
+                if (n->parent)
+                    parentWorldMat = getWorldTransform(n->parent->ID);
+
+                glm::mat4 localMat = glm::translate(glm::mat4(1.0f), n->position);
+                localMat = glm::rotate(localMat, n->rotation.x, glm::vec3(1.f, 0.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.y, glm::vec3(0.f, 1.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.z, glm::vec3(0.f, 0.f, 1.f));
+                localMat = glm::scale(localMat, n->scale);
+
+                glm::mat4 worldMat = parentWorldMat * localMat;
+
+                glm::vec3 worldScale;
+                worldScale.x = glm::length(glm::vec3(worldMat[0]));
+                worldScale.y = glm::length(glm::vec3(worldMat[1]));
+                worldScale.z = glm::length(glm::vec3(worldMat[2]));
+
+                // Normalize rotation basis vectors to prevent scale corruption of btTransform
+                glm::mat4 normWorldMat = worldMat;
+                if (worldScale.x > 0.0f) normWorldMat[0] = worldMat[0] / worldScale.x;
+                if (worldScale.y > 0.0f) normWorldMat[1] = worldMat[1] / worldScale.y;
+                if (worldScale.z > 0.0f) normWorldMat[2] = worldMat[2] / worldScale.z;
+
+                btTransform trans;
+                trans.setFromOpenGLMatrix(glm::value_ptr(normWorldMat));
+                body->setWorldTransform(trans);
+                if (body->getMotionState())
+                    body->getMotionState()->setWorldTransform(trans);
+
+                body->getCollisionShape()->setLocalScaling(btVector3(worldScale.x, worldScale.y, worldScale.z));
+                physics->getDynamicsWorld()->updateSingleAabb(body);
+                
+                // Keep initial transforms up to date for reset
+                initialTransforms[n->ID] = trans;
+            }
+        }
+    }
+}
+
 void SceneManager::ResetPhysics()
 {
+    // 1. Restore all scene graph nodes to their saved pre-simulation transforms
+    for (Node *n : nodes)
+    {
+        auto posIt = initialNodePositions.find(n->ID);
+        if (posIt != initialNodePositions.end())
+        {
+            n->position = posIt->second;
+        }
+        auto rotIt = initialNodeRotations.find(n->ID);
+        if (rotIt != initialNodeRotations.end())
+        {
+            n->rotation = rotIt->second;
+        }
+        auto sclIt = initialNodeScales.find(n->ID);
+        if (sclIt != initialNodeScales.end())
+        {
+            n->scale = sclIt->second;
+        }
+
+        // Sync back to component states
+        if (n->type == NodeType::Model)
+        {
+            Model *model = getModelByID(n->ID);
+            if (model)
+            {
+                model->setPosition(n->position);
+                model->setRotation(n->rotation);
+                model->setScale(n->scale);
+            }
+        }
+        else if (n->type == NodeType::Light)
+        {
+            Light *light = getLightByID(n->ID);
+            if (light)
+            {
+                light->position = n->position;
+            }
+        }
+        else if (n->type == NodeType::Particles)
+        {
+            ParticleEmitter *emitter = getEmitterByID(n->ID);
+            if (emitter)
+            {
+                emitter->Position = n->position;
+            }
+        }
+    }
+
+    // 2. Restore all Bullet rigid bodies to their initial transforms
     for (auto &pair : rigidBodies)
     {
         unsigned int id = pair.first;

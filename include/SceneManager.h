@@ -112,6 +112,7 @@ public:
     void saveScene();
     void LoadScene(const std::string &path);
     void ResetPhysics();
+    void SyncTransforms();
 
     Node *find_node(unsigned int ID);
     glm::mat4 getWorldTransform(unsigned int ID);
@@ -123,6 +124,11 @@ private:
     std::vector<PendingModelLoad> pendingModelLoads;
     std::mutex pendingLoadsMutex;
     std::unordered_map<unsigned int, btTransform> initialTransforms;
+
+    std::unordered_map<unsigned int, glm::vec3> initialNodePositions;
+    std::unordered_map<unsigned int, glm::vec3> initialNodeRotations;
+    std::unordered_map<unsigned int, glm::vec3> initialNodeScales;
+    bool m_wasSimulating = false;
 
     void initializeChildTransform(Node *newNode);
 };
