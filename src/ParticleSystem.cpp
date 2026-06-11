@@ -1,4 +1,5 @@
 #include "ParticleSystem.h"
+#include "JobSystem.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -81,14 +82,16 @@ void ParticleEmitter::SpawnParticle(Particle particle)
 
 void ParticleEmitter::Update(float deltaTime)
 {
-    for (Particle &p : this->particles)
-    {
+    std::atomic<int> counter{0};
+    JobSystem::Get().ParallelFor(0u, (unsigned int)this->particles.size(), 1024u, [this, deltaTime](unsigned int idx) {
+        Particle &p = this->particles[idx];
         if (p.Life > 0.0f)
         {
             p.Life -= deltaTime;
             p.Position += p.Velocity * deltaTime;
         }
-    }
+    }, &counter);
+    JobSystem::Get().Wait(&counter);
 }
 
 void ParticleEmitter::Draw()

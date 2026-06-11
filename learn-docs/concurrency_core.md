@@ -92,3 +92,53 @@ void DispatchWork() {
 }
 ```
 Because `Wait()` blocks until the counter reaches zero, the stack frame is guaranteed to remain valid, eliminating dangling pointer risks and avoiding all heap allocations.
+
+---
+
+## 6. ParallelFor Data Parallelism and Batch Chunking
+
+When simulating systems with thousands of items (like particles), creating one job per item introduces massive scheduler overhead. Instead, we chunk the workload into contiguous batches.
+
+### Implementation:
+`JobSystem::ParallelFor` divides a range `[start, end)` into chunks of size `batchSize`:
+```cpp
+template <typename Index, typename Callable>
+void ParallelFor(Index start, Index end, size_t batchSize, const Callable &func, std::atomic<int> *counter)
+{
+    size_t numBatches = (totalElements + batchSize - 1) / batchSize;
+    counter->fetch_add(numBatches); // Increment completion counter by number of batches
+
+    for (size_t i = 0; i < numBatches; ++i) {
+        // Submit one Job per batch, executing the lambda over that index range
+        Job job;
+        job.work = [batchStart, batchEnd, func]() {
+            for (Index idx = batchStart; idx < batchEnd; ++idx) {
+                func(idx);
+            }
+        };
+        Submit(job);
+    }
+}
+```
+
+### Why Batch Chunking is Critical for High-Frequency Systems:
+* **Saves CPU Cycles**: By grouping e.g. 1024 particle updates into a single job, we make only 1 queue push/pop operation instead of 1024.
+* **Cache Friendliness**: Processing consecutive elements in memory on the same thread maximizes L1/L2 data cache hits.
+
+---
+
+## 7. Decoupling Thread-Safe Calculations from Single-Threaded API Contexts
+
+Many rendering/graphics APIs (like OpenGL) require that all draw calls, texture generations, and buffer creations occur on the thread that created the OpenGL context (usually the main thread).
+
+### The Parallel Update / Serial Render Pattern:
+To parallelize systems that end up calling OpenGL commands, we must split the update process into two distinct phases:
+1. **The Parallel Update Phase**:
+   - Worker threads perform pure CPU-bound mathematical operations (e.g. skinning matrix calculations, skeletal animation bone traversals) concurrently.
+   - The main thread coordinates this phase by dispatching the update jobs and waiting for them to complete using cooperative help-execution.
+2. **The Serial Render Phase**:
+   - Once all calculations are complete and synchronized, the main thread sequentially issues OpenGL draw calls and uploads buffers.
+
+This decoupling allows us to maximize multi-core CPU utilization for game loop updates while fully respecting the single-threaded rendering constraint of OpenGL.
+
+

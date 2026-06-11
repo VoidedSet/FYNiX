@@ -1,4 +1,5 @@
 #include "SceneManager.h"
+#include "JobSystem.h"
 
 using json = nlohmann::json;
 
@@ -192,11 +193,26 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
         shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
     }
 
+    // 1. Parallel Animation Updates
+    std::atomic<int> counter{0};
     for (Model &model : models)
     {
         if (model.hasAnimation)
-            model.UpdateAnimation(deltaTime);
+        {
+            counter.fetch_add(1, std::memory_order_relaxed);
+            Job job;
+            job.completionCounter = &counter;
+            job.work = [&model, deltaTime]() {
+                model.UpdateAnimation(deltaTime);
+            };
+            JobSystem::Get().Submit(job);
+        }
+    }
+    JobSystem::Get().Wait(&counter);
 
+    // 2. Main-Thread Drawing Phase
+    for (Model &model : models)
+    {
         glm::mat4 modelMat = model.getModelMatrix();
         shader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(modelMat));
         model.Draw(shader);

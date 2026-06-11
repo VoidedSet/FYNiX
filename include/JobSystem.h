@@ -81,6 +81,38 @@ public:
     void Wait(std::atomic<int> *counter);
     void ToggleQueueType(bool useLockFree);
 
+    template <typename Index, typename Callable>
+    void ParallelFor(Index start, Index end, size_t batchSize, const Callable &func, std::atomic<int> *counter)
+    {
+        if (start >= end)
+            return;
+
+        size_t totalElements = static_cast<size_t>(end - start);
+        size_t numBatches = (totalElements + batchSize - 1) / batchSize;
+
+        if (counter)
+        {
+            counter->fetch_add(static_cast<int>(numBatches), std::memory_order_relaxed);
+        }
+
+        for (size_t i = 0; i < numBatches; ++i)
+        {
+            Index batchStart = start + static_cast<Index>(i * batchSize);
+            Index batchEnd = (start + static_cast<Index>((i + 1) * batchSize) < end) ? (start + static_cast<Index>((i + 1) * batchSize)) : end;
+
+            Job job;
+            job.completionCounter = counter;
+            job.work = [batchStart, batchEnd, func]()
+            {
+                for (Index idx = batchStart; idx < batchEnd; ++idx)
+                {
+                    func(idx);
+                }
+            };
+            Submit(job);
+        }
+    }
+
     bool IsUsingLockFree() const;
     size_t GetCurrentQueueDepth() const;
     size_t GetTotalJobsExecuted() const;

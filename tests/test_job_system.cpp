@@ -55,6 +55,27 @@ void TestStressCounter()
     std::cout << "  Processed " << NUM_JOBS << " jobs in " << elapsed.count() << " ms." << std::endl;
 }
 
+void TestParallelFor()
+{
+    std::cout << "[TEST] Running ParallelFor Test..." << std::endl;
+    constexpr int NUM_ELEMENTS = 10000;
+    std::vector<int> data(NUM_ELEMENTS, 0);
+    std::atomic<int> counter{0};
+    
+    JobSystem::Get().ParallelFor(0, NUM_ELEMENTS, 1000, [&data](int idx) {
+        data[idx] = idx * 2;
+    }, &counter);
+    
+    JobSystem::Get().Wait(&counter);
+    
+    for (int i = 0; i < NUM_ELEMENTS; ++i)
+    {
+        assert(data[i] == i * 2 && "ParallelFor data index value mismatch!");
+    }
+    
+    std::cout << "[PASS] ParallelFor Test passed!" << std::endl;
+}
+
 int main()
 {
     std::cout << "=== Job System Standalone Tests ===" << std::endl;
@@ -66,12 +87,14 @@ int main()
     JobSystem::Get().ToggleQueueType(true);
     TestSingleJob();
     TestStressCounter();
+    TestParallelFor();
     
     // 2. Run under Mutex-protected queue
     std::cout << "\n--- Testing with Mutex Queue ---" << std::endl;
     JobSystem::Get().ToggleQueueType(false);
     TestSingleJob();
     TestStressCounter();
+    TestParallelFor();
     
     JobSystem::Get().Shutdown();
     
