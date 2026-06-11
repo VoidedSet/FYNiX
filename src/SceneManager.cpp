@@ -93,6 +93,8 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
         Light light(newNode->ID, lightType);
         lights.push_back(light);
     }
+    if (forcedID == 0)
+        initializeChildTransform(newNode);
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
@@ -119,6 +121,8 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
         models.push_back(model);
         std::cout << "[SceneManager] Model loaded and added to node with ID: " << newNode->ID << std::endl;
     }
+    if (forcedID == 0)
+        initializeChildTransform(newNode);
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
@@ -153,6 +157,8 @@ void SceneManager::addToParentAsync(std::string &name, std::string &filepath, No
         std::cout << "[SceneManager] Dispatched async model load for: " << filepath << std::endl;
     }
 
+    initializeChildTransform(newNode);
+
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << " (loading async...)" << std::endl;
 }
 
@@ -171,6 +177,13 @@ void SceneManager::UpdateAsyncLoads()
     for (auto &load : readyLoads)
     {
         load.modelPtr->UploadToGPU(); // Setup VAO, VBO, EBO, and textures on main thread (with OpenGL context)
+        Node *n = find_node(load.assignedID);
+        if (n)
+        {
+            load.modelPtr->setPosition(n->position);
+            load.modelPtr->setRotation(n->rotation);
+            load.modelPtr->setScale(n->scale);
+        }
         models.push_back(std::move(*(load.modelPtr)));
         delete load.modelPtr;
         std::cout << "[SceneManager] Async model loaded and uploaded to GPU: " << load.filepath << std::endl;
@@ -201,6 +214,8 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 
         addToParent(name, NodeType::Light, assignedID, LightType::POINTLIGHT);
     }
+    if (forcedID == 0)
+        initializeChildTransform(newNode);
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
@@ -243,6 +258,8 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
         btTransform trans = body->getWorldTransform();
         initialTransforms[newNode->ID] = trans;
     }
+    if (forcedID == 0)
+        initializeChildTransform(newNode);
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
@@ -263,6 +280,9 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     nodes.push_back(newNode);
     nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
+
+    if (forcedID == 0)
+        initializeChildTransform(newNode);
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
@@ -870,13 +890,25 @@ glm::mat4 SceneManager::getWorldTransform(unsigned int id)
         {
             Light *light = getLightByID(n->ID);
             if (light)
+            {
                 localMat = glm::translate(glm::mat4(1.0f), light->position);
+                localMat = glm::rotate(localMat, n->rotation.x, glm::vec3(1.f, 0.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.y, glm::vec3(0.f, 1.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.z, glm::vec3(0.f, 0.f, 1.f));
+                localMat = glm::scale(localMat, n->scale);
+            }
         }
         else if (n->type == NodeType::Particles)
         {
             ParticleEmitter *emitter = getEmitterByID(n->ID);
             if (emitter)
+            {
                 localMat = glm::translate(glm::mat4(1.0f), emitter->Position);
+                localMat = glm::rotate(localMat, n->rotation.x, glm::vec3(1.f, 0.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.y, glm::vec3(0.f, 1.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.z, glm::vec3(0.f, 0.f, 1.f));
+                localMat = glm::scale(localMat, n->scale);
+            }
         }
         else if (n->type == NodeType::RigidBody)
         {
