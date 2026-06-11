@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string>
 #include <dirent.h>
+#include <mutex>
 
 #include <json.hpp>
 
@@ -91,6 +92,18 @@ public:
     ParticleEmitter *getEmitterByID(unsigned int ID);
     btRigidBody *getRigidBodyByID(unsigned int ID);
 
+    struct PendingModelLoad
+    {
+        std::string name;
+        std::string filepath;
+        NodeType type;
+        unsigned int assignedID;
+        Model *modelPtr;
+    };
+
+    void addToParentAsync(std::string &name, std::string &filepath, NodeType type, unsigned int parentID);
+    void UpdateAsyncLoads();
+
     void saveScene();
     void LoadScene(const std::string &path);
 
@@ -99,4 +112,7 @@ public:
 private:
     const std::string projectPath;
     std::string projectName;
+
+    std::vector<PendingModelLoad> pendingModelLoads;
+    std::mutex pendingLoadsMutex;
 };

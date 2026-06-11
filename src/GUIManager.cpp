@@ -278,10 +278,13 @@ void GUIManager::DrawAddNodeModal()
         ImGui::InputInt("Parent Node ID", &parentNodeId);
         ImGui::Separator();
 
+        static bool loadAsynchronously = true;
+
         switch (static_cast<NodeType>(selectedNodeType))
         {
         case NodeType::Model:
             ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
+            ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
             break;
         case NodeType::Light:
             ImGui::Combo("Light Type", &selectedLightType, lightTypeLabels, IM_ARRAYSIZE(lightTypeLabels));
@@ -306,7 +309,12 @@ void GUIManager::DrawAddNodeModal()
 
             NodeType type = static_cast<NodeType>(selectedNodeType);
             if (type == NodeType::Model)
-                scene->addToParent(nameStr, modelPathStr, type, parentNodeId);
+            {
+                if (loadAsynchronously)
+                    scene->addToParentAsync(nameStr, modelPathStr, type, parentNodeId);
+                else
+                    scene->addToParent(nameStr, modelPathStr, type, parentNodeId);
+            }
             else if (type == NodeType::Light)
                 scene->addToParent(nameStr, type, parentNodeId, static_cast<LightType>(selectedLightType));
             else if (type == NodeType::Particles)
@@ -684,11 +692,16 @@ static void DrawResourceOverlay()
         // Core Engine Scheduler Metrics
         size_t queueDepth = JobSystem::Get().GetCurrentQueueDepth();
         size_t totalJobs = JobSystem::Get().GetTotalJobsExecuted();
+        size_t peakDepth = JobSystem::Get().GetPeakQueueDepth();
         bool isLF = JobSystem::Get().IsUsingLockFree();
 
         ImGui::Text("Active Queue Depth: %llu", queueDepth);
+        ImGui::Text("Peak Queue Depth: %llu", peakDepth);
         ImGui::Text("Total Jobs Executed: %llu", totalJobs);
         ImGui::Text("Active Pipeline: %s", isLF ? "Lock-Free MPMC Ring Buffer" : "Standard Mutex Queue");
+
+        // Reset peak for the next frame's tracking
+        JobSystem::Get().ResetPeakQueueDepth();
 
         if (ImGui::Button("Toggle Scheduler Mode")) {
             JobSystem::Get().ToggleQueueType(!isLF);

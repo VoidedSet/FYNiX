@@ -65,6 +65,7 @@ private:
     std::condition_variable wakeCond_;
 
     std::atomic<size_t> totalJobsExecuted_{0};
+    std::atomic<size_t> peakQueueDepth_{0};
 
     void WorkerLoop(size_t workerId);
     JobSystem() = default;
@@ -116,4 +117,6 @@ public:
     bool IsUsingLockFree() const;
     size_t GetCurrentQueueDepth() const;
     size_t GetTotalJobsExecuted() const;
+    size_t GetPeakQueueDepth() const;
+    void ResetPeakQueueDepth();
 };

@@ -99,6 +99,59 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
+void SceneManager::addToParentAsync(std::string &name, std::string &filepath, NodeType type, unsigned int parentID)
+{
+    unsigned int assignedID = nextID;
+
+    Node *parentNode = find_node(parentID);
+    if (!parentNode)
+    {
+        std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
+        return;
+    }
+    nextID = assignedID + 1;
+    Node *newNode = new Node({assignedID, name, type, parentNode, {}});
+    nodes.push_back(newNode);
+    parentNode->children.push_back(newNode);
+
+    if (type == NodeType::Model)
+    {
+        Job job;
+        job.completionCounter = nullptr;
+        job.work = [this, filepath, assignedID]() {
+            Model *modelPtr = new Model(filepath, assignedID, false); // Load CPU data only (no OpenGL)
+            
+            std::lock_guard<std::mutex> lock(this->pendingLoadsMutex);
+            this->pendingModelLoads.push_back({"", filepath, NodeType::Model, assignedID, modelPtr});
+        };
+        JobSystem::Get().Submit(job);
+        std::cout << "[SceneManager] Dispatched async model load for: " << filepath << std::endl;
+    }
+
+    std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << " (loading async...)" << std::endl;
+}
+
+void SceneManager::UpdateAsyncLoads()
+{
+    std::vector<PendingModelLoad> readyLoads;
+    {
+        std::lock_guard<std::mutex> lock(pendingLoadsMutex);
+        if (!pendingModelLoads.empty())
+        {
+            readyLoads = std::move(pendingModelLoads);
+            pendingModelLoads.clear();
+        }
+    }
+
+    for (auto &load : readyLoads)
+    {
+        load.modelPtr->UploadToGPU(); // Setup VAO, VBO, EBO, and textures on main thread (with OpenGL context)
+        models.push_back(std::move(*(load.modelPtr)));
+        delete load.modelPtr;
+        std::cout << "[SceneManager] Async model loaded and uploaded to GPU: " << load.filepath << std::endl;
+    }
+}
+
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles)
 {
     unsigned int assignedID = nextID;

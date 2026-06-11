@@ -208,6 +208,15 @@ void JobSystem::Submit(const Job &job)
         if (!success)
             _mm_pause();
     }
+    
+    // Update peak queue depth atomically
+    size_t currentDepth = GetCurrentQueueDepth();
+    size_t currentPeak = peakQueueDepth_.load(std::memory_order_relaxed);
+    while (currentDepth > currentPeak && !peakQueueDepth_.compare_exchange_weak(currentPeak, currentDepth, std::memory_order_relaxed))
+    {
+        // loop until successful CAS or currentPeak becomes >= currentDepth
+    }
+
     wakeCond_.notify_one();
 }
 
@@ -237,3 +246,5 @@ void JobSystem::ToggleQueueType(bool useLockFree) { useLockFree_.store(useLockFr
 bool JobSystem::IsUsingLockFree() const { return useLockFree_.load(); }
 size_t JobSystem::GetCurrentQueueDepth() const { return useLockFree_.load() ? lockFreeQueue_.ApproximateDepth() : mutexQueue_.Depth(); }
 size_t JobSystem::GetTotalJobsExecuted() const { return totalJobsExecuted_.load(); }
+size_t JobSystem::GetPeakQueueDepth() const { return peakQueueDepth_.load(std::memory_order_relaxed); }
+void JobSystem::ResetPeakQueueDepth() { peakQueueDepth_.store(0, std::memory_order_relaxed); }

@@ -141,4 +141,32 @@ To parallelize systems that end up calling OpenGL commands, we must split the up
 
 This decoupling allows us to maximize multi-core CPU utilization for game loop updates while fully respecting the single-threaded rendering constraint of OpenGL.
 
+---
+
+## 8. Asynchronous Asset Loading & Resource Deferral
+
+Loading heavy assets (3D meshes, hi-res textures) synchronously halts the main loop, causing the application/game to freeze. Asynchronous asset loading solves this, but presents synchronization challenges.
+
+### 1. The Two-Stage Loading Pattern:
+We refactored `Texture`, `Mesh`, and `Model` to separate CPU disk/memory work from GPU allocation:
+* **Stage 1 (Async CPU Load)**:
+  - Disk operations (reading files, Assimp glTF/OBJ parsing).
+  - CPU image decompression (`stbi_load`).
+  - Storing vertices, indices, and raw pixel pointers in RAM.
+  - This phase runs on a background worker thread.
+* **Stage 2 (Sync GPU Upload)**:
+  - Generating and binding VAO, VBO, EBO.
+  - Uploading pixel buffers to OpenGL (`glTexImage2D`, `glGenerateMipmap`).
+  - Freeing CPU RAM (`stbi_image_free`).
+  - This phase runs on the main thread inside the render loop.
+
+### 2. Preventing Texture Duplication:
+When meshes share the same textures (e.g. standard materials), copying texture objects can lead to duplicate uploads if we call `UploadToGPU` on each copy.
+We resolved this by:
+1. Maintaining a list of unique `textures_loaded` inside the loaded model.
+2. Uploading unique textures to the GPU first.
+3. Updating all mesh texture references to use the newly generated OpenGL texture IDs.
+4. Uploading mesh geometry (VBO/EBO) afterward.
+
+
 

@@ -218,6 +218,8 @@ int main()
         particleShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
 
         //===== RENDER SECTION =====
+        scene.UpdateAsyncLoads();
+        
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

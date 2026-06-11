@@ -44,9 +44,10 @@ public:
     VertexBuffer VBO;
     ElementBuffer EBO;
 
-    Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs);
+    Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs, bool uploadToGPU = true);
     Mesh(MeshType type);
 
+    void UploadToGPU();
     void Draw(Shader &shader);
 
 private:

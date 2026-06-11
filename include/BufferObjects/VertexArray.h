@@ -10,7 +10,8 @@ class VertexArray
 public:
     unsigned int ID;
 
-    VertexArray();
+    VertexArray() : ID(0) {}
+    void Init();
     void AddAttribLayout(unsigned int index, int count, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
     void Bind();
     void UnBind();
