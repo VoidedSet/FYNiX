@@ -60,6 +60,7 @@ void mouse_button_callback(GLFWwindow *window, int button, int action, int mods)
         {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
             globalCamera->cameraLock = true;
+            globalCamera->firstMove = true;
         }
     }
 }
@@ -220,6 +221,26 @@ int main()
         //===== RENDER SECTION =====
         scene.UpdateAsyncLoads();
         
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+        int renderWidth = fbWidth - 350;
+        int renderHeight = fbHeight - 250;
+        if (renderWidth < 100) renderWidth = 100;
+        if (renderHeight < 100) renderHeight = 100;
+
+        glViewport(0, 250, renderWidth, renderHeight);
+
+        glm::mat4 projection = glm::perspective(glm::radians(45.f), (float)renderWidth / (float)renderHeight, 0.1f, 100.f);
+
+        defaultShader.use();
+        defaultShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
+
+        lightShader.use();
+        lightShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
+
+        particleShader.use();
+        particleShader.setUniforms("projection", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(projection));
+
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

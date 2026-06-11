@@ -108,6 +108,7 @@ public:
 
     void saveScene();
     void LoadScene(const std::string &path);
+    void ResetPhysics();
 
     Node *find_node(unsigned int ID);
 
@@ -117,4 +118,5 @@ private:
 
     std::vector<PendingModelLoad> pendingModelLoads;
     std::mutex pendingLoadsMutex;
+    std::unordered_map<unsigned int, btTransform> initialTransforms;
 };

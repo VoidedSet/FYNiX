@@ -229,6 +229,14 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                 scene->drawPhysics = drawPhysics;
             if (ImGui::Checkbox("Simulate Physics", &simulatePhysics))
                 scene->simulate = simulatePhysics;
+            if (!simulatePhysics)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("Reset Physics"))
+                {
+                    scene->ResetPhysics();
+                }
+            }
         }
 
         if (ImGui::CollapsingHeader("Scene Hierarchy", ImGuiTreeNodeFlags_DefaultOpen))
