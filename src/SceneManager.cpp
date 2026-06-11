@@ -1,4 +1,5 @@
 #include "SceneManager.h"
+#include "JobSystem.h"
 
 using json = nlohmann::json;
 
@@ -98,6 +99,59 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
+void SceneManager::addToParentAsync(std::string &name, std::string &filepath, NodeType type, unsigned int parentID)
+{
+    unsigned int assignedID = nextID;
+
+    Node *parentNode = find_node(parentID);
+    if (!parentNode)
+    {
+        std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
+        return;
+    }
+    nextID = assignedID + 1;
+    Node *newNode = new Node({assignedID, name, type, parentNode, {}});
+    nodes.push_back(newNode);
+    parentNode->children.push_back(newNode);
+
+    if (type == NodeType::Model)
+    {
+        Job job;
+        job.completionCounter = nullptr;
+        job.work = [this, filepath, assignedID]() {
+            Model *modelPtr = new Model(filepath, assignedID, false); // Load CPU data only (no OpenGL)
+            
+            std::lock_guard<std::mutex> lock(this->pendingLoadsMutex);
+            this->pendingModelLoads.push_back({"", filepath, NodeType::Model, assignedID, modelPtr});
+        };
+        JobSystem::Get().Submit(job);
+        std::cout << "[SceneManager] Dispatched async model load for: " << filepath << std::endl;
+    }
+
+    std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << " (loading async...)" << std::endl;
+}
+
+void SceneManager::UpdateAsyncLoads()
+{
+    std::vector<PendingModelLoad> readyLoads;
+    {
+        std::lock_guard<std::mutex> lock(pendingLoadsMutex);
+        if (!pendingModelLoads.empty())
+        {
+            readyLoads = std::move(pendingModelLoads);
+            pendingModelLoads.clear();
+        }
+    }
+
+    for (auto &load : readyLoads)
+    {
+        load.modelPtr->UploadToGPU(); // Setup VAO, VBO, EBO, and textures on main thread (with OpenGL context)
+        models.push_back(std::move(*(load.modelPtr)));
+        delete load.modelPtr;
+        std::cout << "[SceneManager] Async model loaded and uploaded to GPU: " << load.filepath << std::endl;
+    }
+}
+
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles)
 {
     unsigned int assignedID = nextID;
@@ -155,6 +209,10 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     {
         body = physics->createBoxRigidBody(glm::vec3(1.f), glm::vec3(1.f), mass);
         rigidBodies[newNode->ID] = body;
+        
+        // Save initial transform
+        btTransform trans = body->getWorldTransform();
+        initialTransforms[newNode->ID] = trans;
     }
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
@@ -180,6 +238,18 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 
 void SceneManager::RenderModels(Shader &shader, float deltaTime)
 {
+    // 0. Kick off asynchronous physics simulation update
+    if (simulate && physics)
+    {
+        physicsCounter.store(1, std::memory_order_relaxed);
+        Job physicsJob;
+        physicsJob.completionCounter = &physicsCounter;
+        physicsJob.work = [this, deltaTime]() {
+            physics->update(deltaTime);
+        };
+        JobSystem::Get().Submit(physicsJob);
+    }
+
     int lightCount = lights.size();
     shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
 
@@ -192,11 +262,26 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
         shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
     }
 
+    // 1. Parallel Animation Updates
+    std::atomic<int> counter{0};
     for (Model &model : models)
     {
         if (model.hasAnimation)
-            model.UpdateAnimation(deltaTime);
+        {
+            counter.fetch_add(1, std::memory_order_relaxed);
+            Job job;
+            job.completionCounter = &counter;
+            job.work = [&model, deltaTime]() {
+                model.UpdateAnimation(deltaTime);
+            };
+            JobSystem::Get().Submit(job);
+        }
+    }
+    JobSystem::Get().Wait(&counter);
 
+    // 2. Main-Thread Drawing Phase
+    for (Model &model : models)
+    {
         glm::mat4 modelMat = model.getModelMatrix();
         shader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(modelMat));
         model.Draw(shader);
@@ -236,8 +321,11 @@ void SceneManager::RenderParticles(float dt)
 
 void SceneManager::RenderPhysics(float dt, Shader &shader)
 {
-    if (simulate)
-        physics->update(dt);
+    // Wait for the background physics update job to complete before drawing
+    if (simulate && physics)
+    {
+        JobSystem::Get().Wait(&physicsCounter);
+    }
 
     if (drawPhysics && physics)
     {
@@ -443,11 +531,34 @@ void SceneManager::saveScene()
                 j["color"] = {it->Color.r, it->Color.g, it->Color.b, it->Color.a};
                 j["position"] = {it->Position.x, it->Position.y, it->Position.z};
                 j["shdaerName"] = it->shader.Name;
-                j["maxParticles"] = it->maxParticles;
+                 j["maxParticles"] = it->maxParticles;
             }
             else
             {
                 std::cerr << "[SceneManager] Warning: No Particle Emitter found for node ID " << node->ID << std::endl;
+            }
+        }
+        else if (node->type == NodeType::RigidBody)
+        {
+            auto it = rigidBodies.find(node->ID);
+            if (it != rigidBodies.end())
+            {
+                btRigidBody *body = it->second;
+                float mass = (body->getInvMass() > 0.0f) ? (1.0f / body->getInvMass()) : 0.0f;
+                j["mass"] = mass;
+                j["shape"] = "CUBE";
+                
+                btTransform trans;
+                if (body->getMotionState())
+                    body->getMotionState()->getWorldTransform(trans);
+                else
+                    trans = body->getWorldTransform();
+                    
+                j["position"] = {trans.getOrigin().getX(), trans.getOrigin().getY(), trans.getOrigin().getZ()};
+            }
+            else
+            {
+                std::cerr << "[SceneManager] Warning: No Rigid Body found for node ID " << node->ID << std::endl;
             }
         }
 
@@ -523,6 +634,15 @@ void SceneManager::LoadScene(const std::string &path)
     nodes.clear();
     models.clear();
     lights.clear(); // Add this if lights are persistent
+    
+    if (physics)
+    {
+        delete physics;
+        physics = nullptr;
+    }
+    rigidBodies.clear();
+    initialTransforms.clear();
+    
     nextID = 1;
 
     std::function<void(json &, Node *)> buildNodeRecursive = [&](json &j, Node *parent)
@@ -585,6 +705,29 @@ void SceneManager::LoadScene(const std::string &path)
                     emitter->Color = glm::vec4(j["color"][0], j["color"][1], j["color"][2], j["color"][3]);
             }
         }
+        else if (type == NodeType::RigidBody)
+        {
+            float mass = 1.0f;
+            if (j.contains("mass"))
+                mass = j["mass"];
+            addToParent(name, type, parent->ID, RigidBodyShape::CUBE, mass);
+
+            // Set physics rigid body position if available
+            auto *body = getRigidBodyByID(id);
+            if (body && j.contains("position"))
+            {
+                btTransform trans = body->getWorldTransform();
+                trans.setOrigin(btVector3(j["position"][0], j["position"][1], j["position"][2]));
+                body->setWorldTransform(trans);
+                if (body->getMotionState())
+                {
+                    body->getMotionState()->setWorldTransform(trans);
+                }
+                
+                // Save loaded position as the initial transform
+                initialTransforms[id] = trans;
+            }
+        }
         else
         {
             addToParent(name, type, parent->ID);
@@ -639,4 +782,32 @@ Node *SceneManager::find_node(unsigned int id)
     }
 
     return nullptr;
+}
+
+void SceneManager::ResetPhysics()
+{
+    for (auto &pair : rigidBodies)
+    {
+        unsigned int id = pair.first;
+        btRigidBody *body = pair.second;
+        if (body)
+        {
+            // Clear velocities and forces
+            body->setLinearVelocity(btVector3(0, 0, 0));
+            body->setAngularVelocity(btVector3(0, 0, 0));
+            body->clearForces();
+
+            // Reset transform to initial state
+            auto it = initialTransforms.find(id);
+            if (it != initialTransforms.end())
+            {
+                body->setWorldTransform(it->second);
+                if (body->getMotionState())
+                {
+                    body->getMotionState()->setWorldTransform(it->second);
+                }
+            }
+        }
+    }
+    std::cout << "[Physics] Physics world reset to initial positions." << std::endl;
 }

@@ -10,7 +10,11 @@ class VertexBuffer
 public:
     unsigned int ID;
 
+    VertexBuffer() : ID(0) {}
     VertexBuffer(const void *data, unsigned int size);
+
+    void Init(const void *data, unsigned int size);
+
     void Bind();
     void UnBind();
 };

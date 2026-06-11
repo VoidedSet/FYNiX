@@ -18,14 +18,38 @@ std::string decodeURIComponent(const std::string &str)
     return ret;
 }
 
-Texture::Texture(const char *filePath, GLenum textureType, unsigned int textureUnit, const std::string &typeName)
+Texture::Texture()
+    : ID(0), data(nullptr), path(""), type(""), width(0), height(0), nrChannels(0), textureType(GL_TEXTURE_2D), textureUnit(0)
 {
-    std::string decodedPath = decodeURIComponent(filePath);
+}
 
-    this->textureType = textureType;
-    this->textureUnit = textureUnit;
-    this->path = decodedPath;
-    this->type = typeName;
+Texture::Texture(const char *filePath, GLenum textureType, unsigned int textureUnit, const std::string &typeName, bool uploadToGPU)
+    : ID(0), data(nullptr), path(decodeURIComponent(filePath)), type(typeName), width(0), height(0), nrChannels(0), textureType(textureType), textureUnit(textureUnit)
+{
+    LoadCPU();
+    if (uploadToGPU)
+    {
+        UploadToGPU();
+    }
+}
+
+void Texture::LoadCPU()
+{
+    if (data)
+        return;
+
+    stbi_set_flip_vertically_on_load(false);
+    data = stbi_load(path.c_str(), &width, &height, &nrChannels, 0);
+    if (!data)
+    {
+        std::cerr << "[Texture - ERROR] Failed to load: " << path << std::endl;
+    }
+}
+
+void Texture::UploadToGPU()
+{
+    if (!data)
+        return;
 
     glGenTextures(1, &ID);
     glBindTexture(textureType, ID);
@@ -35,23 +59,13 @@ Texture::Texture(const char *filePath, GLenum textureType, unsigned int textureU
     glTexParameteri(textureType, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(textureType, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    int width, height, nrChannels;
-    unsigned char *data = stbi_load(decodedPath.c_str(), &width, &height, &nrChannels, 0);
-
     GLenum format = (nrChannels == 4) ? GL_RGBA : GL_RGB;
-
-    if (!data)
-    {
-        std::cerr << "[Texture - ERROR] Failed to load: " << decodedPath << std::endl;
-        return;
-    }
-
-    stbi_set_flip_vertically_on_load(false);
 
     glTexImage2D(textureType, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(textureType);
 
     stbi_image_free(data);
+    data = nullptr;
 }
 
 void Texture::Bind(unsigned int texSlot)

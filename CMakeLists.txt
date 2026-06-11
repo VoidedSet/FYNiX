@@ -24,6 +24,8 @@ link_directories(${CMAKE_SOURCE_DIR}/lib)
 # Source files
 file(GLOB_RECURSE SRC_FILES "${CMAKE_SOURCE_DIR}/src/*.cpp")
 list(APPEND SRC_FILES "${CMAKE_SOURCE_DIR}/src/glad.c")
+list(APPEND SRC_FILES "${CMAKE_SOURCE_DIR}/src/JobSystem.cpp")
+list(REMOVE_DUPLICATES SRC_FILES)
 
 # Executable
 add_executable(fynix ${SRC_FILES})
@@ -48,3 +50,8 @@ target_link_libraries(fynix
     libBulletCollision.a
     libLinearMath.a
 )
+
+# Standalone Job System stress test
+add_executable(test_job_system tests/test_job_system.cpp src/JobSystem.cpp)
+target_include_directories(test_job_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+

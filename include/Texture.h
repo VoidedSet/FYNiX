@@ -15,8 +15,16 @@ public:
 
     std::string path;
     std::string type;
+    int width;
+    int height;
+    int nrChannels;
 
-    Texture(const char *filePath, GLenum textureType, unsigned int textureUnit, const std::string &typeName);
+    Texture();
+    Texture(const char *filePath, GLenum textureType, unsigned int textureUnit, const std::string &typeName, bool uploadToGPU = true);
+    
+    void LoadCPU();
+    void UploadToGPU();
+
     void Bind(unsigned int texSlot);
     void SetUniform(Shader &shader, const std::string &uniformName);
     void UnBind();

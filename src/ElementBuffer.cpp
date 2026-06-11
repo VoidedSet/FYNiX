@@ -2,6 +2,11 @@
 
 ElementBuffer::ElementBuffer(const void *data, unsigned int size)
 {
+    Init(data, size);
+}
+
+void ElementBuffer::Init(const void *data, unsigned int size)
+{
     glGenBuffers(1, &ID);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ID);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, GL_STATIC_DRAW);

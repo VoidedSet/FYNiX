@@ -41,8 +41,9 @@ public:
     bool hasAnimation = false;
     bool physicsEnabled = false;
 
-    Model(const std::string &path, unsigned int ID);
+    Model(const std::string &path, unsigned int ID, bool uploadToGPU = true);
 
+    void UploadToGPU();
     void Draw(Shader &shader);
     void UpdateAnimation(float deltaTime);
 
@@ -68,13 +69,13 @@ private:
               rotation = glm::vec3(1.f),
               scale = glm::vec3(1.f);
 
-    bool loadModel(std::string path);
-    void processNode(aiNode *node, const aiScene *scene);
-    Mesh processMesh(aiMesh *mesh, const aiScene *scene);
+    bool loadModel(std::string path, bool uploadToGPU);
+    void processNode(aiNode *node, const aiScene *scene, bool uploadToGPU);
+    Mesh processMesh(aiMesh *mesh, const aiScene *scene, bool uploadToGPU);
 
     bool readSkeleton(Bone &boneOutput, aiNode *node, std::unordered_map<std::string, std::pair<int, glm::mat4>> &boneInfoTable);
 
-    std::vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName);
+    std::vector<Texture> loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName, bool uploadToGPU);
     std::vector<Texture> textures_loaded;
 
     glm::mat4 assimpToGlmMatrix(aiMatrix4x4 mat)

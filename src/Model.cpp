@@ -2,15 +2,42 @@
 #include "Mesh.h"
 #include <glm/gtx/string_cast.hpp>
 
-Model::Model(const std::string &path, unsigned int ID) : ID(ID), directory(path)
+Model::Model(const std::string &path, unsigned int ID, bool uploadToGPU) : ID(ID), directory(path)
 {
-    if (loadModel(path))
+    if (loadModel(path, uploadToGPU))
     {
         std::cout << "[Model] Model loaded successfully from: " << path << std::endl;
+        if (uploadToGPU)
+        {
+            UploadToGPU();
+        }
     }
     else
     {
         std::cerr << "[Model] Failed to load model from: " << path << std::endl;
+    }
+}
+
+void Model::UploadToGPU()
+{
+    for (auto &tex : textures_loaded)
+    {
+        tex.UploadToGPU();
+    }
+    for (auto &mesh : meshes)
+    {
+        for (auto &meshTex : mesh.textures)
+        {
+            for (const auto &uniqueTex : textures_loaded)
+            {
+                if (meshTex.path == uniqueTex.path)
+                {
+                    meshTex.ID = uniqueTex.ID;
+                    break;
+                }
+            }
+        }
+        mesh.UploadToGPU();
     }
 }
 
@@ -47,7 +74,7 @@ glm::mat4 Model::getModelMatrix() const
     return model;
 }
 
-bool Model::loadModel(std::string path)
+bool Model::loadModel(std::string path, bool uploadToGPU)
 {
     Assimp::Importer importer;
     const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
@@ -61,7 +88,7 @@ bool Model::loadModel(std::string path)
     globalInverseTransform = assimpToGlmMatrix(scene->mRootNode->mTransformation);
     globalInverseTransform = glm::inverse(globalInverseTransform);
 
-    processNode(scene->mRootNode, scene);
+    processNode(scene->mRootNode, scene, uploadToGPU);
 
     if (scene->HasAnimations())
     {
@@ -73,22 +100,22 @@ bool Model::loadModel(std::string path)
     return true;
 }
 
-void Model::processNode(aiNode *node, const aiScene *scene)
+void Model::processNode(aiNode *node, const aiScene *scene, bool uploadToGPU)
 {
     for (unsigned int i = 0; i < node->mNumMeshes; i++)
     {
         unsigned int meshIndex = node->mMeshes[i];
         aiMesh *mesh = scene->mMeshes[meshIndex];
-        meshes.push_back(processMesh(mesh, scene));
+        meshes.push_back(processMesh(mesh, scene, uploadToGPU));
     }
 
     for (unsigned int i = 0; i < node->mNumChildren; i++)
     {
-        processNode(node->mChildren[i], scene);
+        processNode(node->mChildren[i], scene, uploadToGPU);
     }
 }
 
-Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
+Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene, bool uploadToGPU)
 {
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
@@ -172,13 +199,13 @@ Mesh Model::processMesh(aiMesh *mesh, const aiScene *scene)
     if (mesh->mMaterialIndex >= 0)
     {
         aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
-        std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
+        std::vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", uploadToGPU);
         textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-        std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+        std::vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", uploadToGPU);
         textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
     }
 
-    return Mesh(vertices, indices, textures);
+    return Mesh(vertices, indices, textures, uploadToGPU);
 }
 
 bool Model::readSkeleton(Bone &boneOutput, aiNode *node, std::unordered_map<std::string, std::pair<int, glm::mat4>> &boneInfoTable)
@@ -212,7 +239,7 @@ bool Model::readSkeleton(Bone &boneOutput, aiNode *node, std::unordered_map<std:
     return false;
 }
 
-std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName)
+std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType type, std::string typeName, bool uploadToGPU)
 {
     std::vector<Texture> textures;
     for (unsigned int i = 0; i < mat->GetTextureCount(type); i++)
@@ -234,7 +261,7 @@ std::vector<Texture> Model::loadMaterialTextures(aiMaterial *mat, aiTextureType 
 
         if (!skip)
         {
-            Texture texture(fullPath.c_str(), GL_TEXTURE_2D, i, typeName);
+            Texture texture(fullPath.c_str(), GL_TEXTURE_2D, i, typeName, uploadToGPU);
             texture.path = fullPath;
             textures.push_back(texture);
             textures_loaded.push_back(texture);

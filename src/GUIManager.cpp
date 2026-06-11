@@ -1,8 +1,10 @@
 #include "GUI.h"
 #include "glm/gtc/type_ptr.hpp"
+#include "JobSystem.h"
 
 #include <windows.h>
 #include <psapi.h>
+#include <chrono>
 
 ImGuiIO GUIManager::io;
 
@@ -24,6 +26,11 @@ namespace
     bool drawLights = true;
     bool drawPhysics = true;
     bool simulatePhysics = false;
+
+    // --- Benchmark State Variables ---
+    bool benchmarkExecuted = false;
+    double lastBenchmarkTimeLF = 0.0;
+    double lastBenchmarkTimeMutex = 0.0;
 
     // --- Resource Overlay State ---
     constexpr int FPS_HISTORY_COUNT = 90;
@@ -222,6 +229,14 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                 scene->drawPhysics = drawPhysics;
             if (ImGui::Checkbox("Simulate Physics", &simulatePhysics))
                 scene->simulate = simulatePhysics;
+            if (!simulatePhysics)
+            {
+                ImGui::SameLine();
+                if (ImGui::Button("Reset Physics"))
+                {
+                    scene->ResetPhysics();
+                }
+            }
         }
 
         if (ImGui::CollapsingHeader("Scene Hierarchy", ImGuiTreeNodeFlags_DefaultOpen))
@@ -271,10 +286,13 @@ void GUIManager::DrawAddNodeModal()
         ImGui::InputInt("Parent Node ID", &parentNodeId);
         ImGui::Separator();
 
+        static bool loadAsynchronously = true;
+
         switch (static_cast<NodeType>(selectedNodeType))
         {
         case NodeType::Model:
             ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
+            ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
             break;
         case NodeType::Light:
             ImGui::Combo("Light Type", &selectedLightType, lightTypeLabels, IM_ARRAYSIZE(lightTypeLabels));
@@ -299,7 +317,12 @@ void GUIManager::DrawAddNodeModal()
 
             NodeType type = static_cast<NodeType>(selectedNodeType);
             if (type == NodeType::Model)
-                scene->addToParent(nameStr, modelPathStr, type, parentNodeId);
+            {
+                if (loadAsynchronously)
+                    scene->addToParentAsync(nameStr, modelPathStr, type, parentNodeId);
+                else
+                    scene->addToParent(nameStr, modelPathStr, type, parentNodeId);
+            }
             else if (type == NodeType::Light)
                 scene->addToParent(nameStr, type, parentNodeId, static_cast<LightType>(selectedLightType));
             else if (type == NodeType::Particles)
@@ -569,6 +592,47 @@ namespace
         if (ImGui::DragFloat("Restitution", &restitution, 0.05f, 0.0f, 1.0f))
             body->setRestitution(restitution);
     }
+
+    double ExecuteMicroBenchmark(bool useLockFree)
+    {
+        // Save original scheduler state
+        bool wasLockFree = JobSystem::Get().IsUsingLockFree();
+        
+        // Toggle to the target queue type for the benchmark
+        JobSystem::Get().ToggleQueueType(useLockFree);
+
+        constexpr int ITEM_COUNT = 100000;
+        std::atomic<int> completionCounter{ITEM_COUNT};
+
+        auto startTime = std::chrono::high_resolution_clock::now();
+
+        for (int i = 0; i < ITEM_COUNT; ++i)
+        {
+            Job testJob;
+            testJob.completionCounter = &completionCounter;
+            testJob.work = []() {
+                // Simulate light microsecond math workloads typical to engine transformations or order booking
+                volatile int counter = 0;
+                for (int j = 0; j < 50; ++j)
+                    counter++;
+            };
+            JobSystem::Get().Submit(testJob);
+        }
+
+        // Main thread helps execution instead of freezing
+        JobSystem::Get().Wait(&completionCounter);
+
+        auto endTime = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = endTime - startTime;
+
+        std::cout << "[BENCHMARK] (" << (useLockFree ? "Lock-Free" : "Mutex")
+                  << ") Processed " << ITEM_COUNT << " jobs in " << elapsed.count() << " ms\n";
+
+        // Restore original scheduler state
+        JobSystem::Get().ToggleQueueType(wasLockFree);
+
+        return elapsed.count();
+    }
 } // end anonymous namespace
 
 // ===================================================================================
@@ -629,6 +693,51 @@ static void DrawResourceOverlay()
         char ramLabel[32];
         snprintf(ramLabel, sizeof(ramLabel), "Sys RAM: %.1f%%", systemRamPercent * 100.0f);
         ImGui::ProgressBar(systemRamPercent, ImVec2(180, 0), ramLabel);
+
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.2f, 0.7f, 1.0f, 1.0f), "Concurrency Profiler");
+
+        // Core Engine Scheduler Metrics
+        size_t queueDepth = JobSystem::Get().GetCurrentQueueDepth();
+        size_t totalJobs = JobSystem::Get().GetTotalJobsExecuted();
+        size_t peakDepth = JobSystem::Get().GetPeakQueueDepth();
+        bool isLF = JobSystem::Get().IsUsingLockFree();
+
+        ImGui::Text("Active Queue Depth: %llu", queueDepth);
+        ImGui::Text("Peak Queue Depth: %llu", peakDepth);
+        ImGui::Text("Total Jobs Executed: %llu", totalJobs);
+        ImGui::Text("Active Pipeline: %s", isLF ? "Lock-Free MPMC Ring Buffer" : "Standard Mutex Queue");
+
+        // Reset peak for the next frame's tracking
+        JobSystem::Get().ResetPeakQueueDepth();
+
+        if (ImGui::Button("Toggle Scheduler Mode")) {
+            JobSystem::Get().ToggleQueueType(!isLF);
+        }
+
+        ImGui::Spacing();
+        if (ImGui::Button("Run Micro-Benchmark (100k Jobs)")) {
+            // Run both sequentially under identical constraints to generate real-time hardware metrics
+            lastBenchmarkTimeLF = ExecuteMicroBenchmark(true);  // Test Dmitri Vyukov's Lock-Free Ring Buffer
+            lastBenchmarkTimeMutex = ExecuteMicroBenchmark(false); // Test Mutex/Deque setup
+            benchmarkExecuted = true;
+        }
+
+        if (benchmarkExecuted) {
+            ImGui::Text("Lock-Free MPMC: %.3f ms", lastBenchmarkTimeLF);
+            ImGui::Text("Mutex Guarded:  %.3f ms", lastBenchmarkTimeMutex);
+
+            float efficiencyGain = 0.0f;
+            if (lastBenchmarkTimeLF > 0) {
+                efficiencyGain = ((lastBenchmarkTimeMutex - lastBenchmarkTimeLF) / lastBenchmarkTimeMutex) * 100.0f;
+            }
+
+            if (efficiencyGain > 0) {
+                ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "Lock-Free is %.1f%% faster", efficiencyGain);
+            } else {
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Lock-Free is %.1f%% slower (Low core contention)", -efficiencyGain);
+            }
+        }
     }
     ImGui::End();
 }

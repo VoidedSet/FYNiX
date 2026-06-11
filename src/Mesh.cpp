@@ -38,12 +38,21 @@ float cubeVert[] = {
     -0.5f, 0.5f, 0.5f, 0.0f, 0.0f,
     -0.5f, 0.5f, -0.5f, 0.0f, 1.0f};
 
-Mesh::Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs)
-    : vertices(vert), indices(inds), textures(texs),
-      VBO(vertices.data(), vertices.size() * sizeof(Vertex)),
-      EBO(indices.data(), indices.size() * sizeof(unsigned int))
+Mesh::Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector<Texture> texs, bool uploadToGPU)
+    : vertices(vert), indices(inds), textures(texs)
 {
-    VAO = VertexArray();
+    if (uploadToGPU)
+    {
+        UploadToGPU();
+    }
+}
+
+void Mesh::UploadToGPU()
+{
+    VBO.Init(vertices.data(), vertices.size() * sizeof(Vertex));
+    EBO.Init(indices.data(), indices.size() * sizeof(unsigned int));
+
+    VAO.Init();
     VAO.Bind();
     VBO.Bind();
     EBO.Bind();
@@ -55,13 +64,11 @@ Mesh::Mesh(std::vector<Vertex> vert, std::vector<unsigned int> inds, std::vector
     glEnableVertexAttribArray(3);
     glVertexAttribIPointer(3, 4, GL_INT, sizeof(Vertex), (GLvoid *)offsetof(Vertex, boneIds));
 
-    VAO.AddAttribLayout(4, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)offsetof(Vertex, boneWeights)); // bone wieghts
+    VAO.AddAttribLayout(4, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid *)offsetof(Vertex, boneWeights)); // bone weights
 
     VAO.UnBind();
     VBO.UnBind();
     EBO.UnBind();
-
-    // std::cout << "[Mesh] Texture count : " << textures.size() << std::endl;
 }
 
 Mesh::Mesh(MeshType type) : VBO(VertexBuffer(cubeVert, sizeof(cubeVert))), EBO(ElementBuffer(this->cubeIndices, sizeof(this->cubeIndices)))
@@ -69,7 +76,7 @@ Mesh::Mesh(MeshType type) : VBO(VertexBuffer(cubeVert, sizeof(cubeVert))), EBO(E
     indices.push_back(0);
     if (type == MeshType::CUBE)
     {
-        VAO = VertexArray();
+        VAO.Init();
         VAO.Bind();
         VBO.Bind();
         EBO.Bind();
