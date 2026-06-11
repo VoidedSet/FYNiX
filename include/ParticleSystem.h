@@ -34,7 +34,7 @@ public:
     void Update(float dt);
     void Draw();
 
-    void SpawnParticle(Particle particle);
+    void SpawnParticle(Particle particle, const glm::vec3 &spawnPos);
 
 private:
     std::vector<Particle> particles;

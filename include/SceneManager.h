@@ -9,6 +9,7 @@
 #include <atomic>
 
 #include <json.hpp>
+#include <glm/glm.hpp>
 
 #include "Model.h"
 #include "Light.h"
@@ -36,6 +37,10 @@ struct Node
 
     Node *parent = nullptr;
     std::vector<Node *> children;
+
+    glm::vec3 position = glm::vec3(0.0f);
+    glm::vec3 rotation = glm::vec3(0.0f);
+    glm::vec3 scale = glm::vec3(1.0f);
 };
 
 class SceneManager
@@ -49,6 +54,7 @@ public:
                            nullptr,
                            {}});
     std::vector<Node *> nodes;
+    std::unordered_map<unsigned int, Node *> nodeMap;
     std::vector<Model> models;
     std::vector<Light> lights;
     std::vector<ParticleEmitter> particleEmitters;
@@ -68,19 +74,19 @@ public:
     SceneManager(const std::string &projectPath);
 
     // add a light node to parent
-    void addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType);
+    void addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, unsigned int forcedID = 0);
 
     // add a model node to parent
-    void addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int assignedID);
+    void addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID, unsigned int forcedID = 0);
 
     // add a particle system
-    void addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles);
+    void addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles, unsigned int forcedID = 0);
 
     // add a rigid body
-    void addToParent(std::string &name, NodeType type, unsigned int parentID, RigidBodyShape shape, float mass);
+    void addToParent(std::string &name, NodeType type, unsigned int parentID, RigidBodyShape shape, float mass, unsigned int forcedID = 0);
 
     // add any other node to parent
-    void addToParent(std::string &name, NodeType type, unsigned int parentID);
+    void addToParent(std::string &name, NodeType type, unsigned int parentID, unsigned int forcedID = 0);
 
     void RenderModels(Shader &shader, float deltaTime);
     void RenderLights(Shader &shader);
@@ -111,6 +117,7 @@ public:
     void ResetPhysics();
 
     Node *find_node(unsigned int ID);
+    glm::mat4 getWorldTransform(unsigned int ID);
 
 private:
     const std::string projectPath;

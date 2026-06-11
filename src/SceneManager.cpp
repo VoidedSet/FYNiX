@@ -1,5 +1,6 @@
 #include "SceneManager.h"
 #include "JobSystem.h"
+#include <glm/gtc/type_ptr.hpp>
 
 using json = nlohmann::json;
 
@@ -44,6 +45,7 @@ NodeType SceneManager::stringToNodeType(const std::string &str)
 SceneManager::SceneManager(const std::string &projectPath) : projectPath(projectPath)
 {
     nodes.push_back(root);
+    nodeMap[root->ID] = root;
     nextID = 1;
 
     std::cout << "[SceneManager] Initializing SceneManager with project path: " << projectPath << std::endl;
@@ -51,9 +53,9 @@ SceneManager::SceneManager(const std::string &projectPath) : projectPath(project
     // physics = new PhysicsEngine;
 }
 
-void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType)
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, unsigned int forcedID)
 {
-    unsigned int assignedID = nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -61,9 +63,11 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
         return;
     }
 
-    nextID = assignedID + 1;
+    if (assignedID >= nextID)
+        nextID = assignedID + 1;
     Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
+    nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
 
     if (type == NodeType::Light)
@@ -74,9 +78,9 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID)
+void SceneManager::addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID, unsigned int forcedID)
 {
-    unsigned int assignedID = nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
 
     Node *parentNode = find_node(parentID);
     if (!parentNode)
@@ -84,9 +88,11 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
         std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
         return;
     }
-    nextID = assignedID + 1;
+    if (assignedID >= nextID)
+        nextID = assignedID + 1;
     Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
+    nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
 
     if (type == NodeType::Model)
@@ -112,6 +118,7 @@ void SceneManager::addToParentAsync(std::string &name, std::string &filepath, No
     nextID = assignedID + 1;
     Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
+    nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
 
     if (type == NodeType::Model)
@@ -152,9 +159,9 @@ void SceneManager::UpdateAsyncLoads()
     }
 }
 
-void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles)
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles, unsigned int forcedID)
 {
-    unsigned int assignedID = nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -162,9 +169,11 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
         return;
     }
 
-    nextID = assignedID + 1;
+    if (assignedID >= nextID)
+        nextID = assignedID + 1;
     Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
+    nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
 
     if (type == NodeType::Particles)
@@ -178,9 +187,9 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, RigidBodyShape shape, float mass)
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, RigidBodyShape shape, float mass, unsigned int forcedID)
 {
-    unsigned int assignedID = nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -198,9 +207,11 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
         }
     }
 
-    nextID = assignedID + 1;
+    if (assignedID >= nextID)
+        nextID = assignedID + 1;
     Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
+    nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
 
     btRigidBody *body = nullptr;
@@ -218,9 +229,9 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
 
-void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID)
+void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, unsigned int forcedID)
 {
-    unsigned int assignedID = nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -228,9 +239,11 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
         return;
     }
 
-    nextID = assignedID + 1;
+    if (assignedID >= nextID)
+        nextID = assignedID + 1;
     Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
+    nodeMap[newNode->ID] = newNode;
     parentNode->children.push_back(newNode);
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
@@ -258,7 +271,10 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
         std::string posName = "lightPositions[" + std::to_string(i) + "]";
         std::string colName = "lightColors[" + std::to_string(i) + "]";
 
-        shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].position)));
+        glm::mat4 worldMat = getWorldTransform(lights[i].ID);
+        glm::vec3 worldPos = glm::vec3(worldMat[3]);
+
+        shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldPos)));
         shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
     }
 
@@ -282,7 +298,7 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
     // 2. Main-Thread Drawing Phase
     for (Model &model : models)
     {
-        glm::mat4 modelMat = model.getModelMatrix();
+        glm::mat4 modelMat = getWorldTransform(model.ID);
         shader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(modelMat));
         model.Draw(shader);
     }
@@ -294,7 +310,11 @@ void SceneManager::RenderLights(Shader &shader)
         for (auto &light : lights)
         {
             shader.use();
-            light.Draw(shader);
+            glm::mat4 worldMat = getWorldTransform(light.ID);
+            worldMat = glm::scale(worldMat, glm::vec3(0.3f));
+            shader.setUniforms("uLightColor", static_cast<unsigned int>(UniformType::Vec3f), (void *)(glm::value_ptr(light.color)));
+            shader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)(glm::value_ptr(worldMat)));
+            light.lightMesh.Draw(shader);
         }
 }
 
@@ -302,16 +322,18 @@ void SceneManager::RenderParticles(float dt)
 {
     for (auto &emitter : particleEmitters)
     {
+        glm::mat4 worldMat = getWorldTransform(emitter.ID);
+        glm::vec3 worldPos = glm::vec3(worldMat[3]);
+
         for (int i = 0; i < 10; i++)
         {
             Particle newParticle;
             newParticle.Position = glm::vec3(0.0f, 0.0f, 0.0f);
             newParticle.Velocity = glm::vec3((rand() % 100 - 50) / 10.0f, 5.f, (rand() % 100 - 50) / 10.0f);
             newParticle.Life = 1.5f;
-            // newParticle.Color = glm::vec4(1.0f, 0.5f, 0.2f, 1.0f);
             newParticle.Color = emitter.Color;
             newParticle.Size = 0.05f;
-            emitter.SpawnParticle(newParticle);
+            emitter.SpawnParticle(newParticle, worldPos);
         }
 
         emitter.Update(dt);
@@ -425,6 +447,7 @@ void SceneManager::deleteNode(unsigned int ID)
 
     std::cout << "[SceneManager] Deleting node with ID: " << nodeToDelete->ID << " and name: " << nodeToDelete->name << std::endl;
     nodes.erase(std::remove(nodes.begin(), nodes.end(), nodeToDelete), nodes.end());
+    nodeMap.erase(ID);
     delete nodeToDelete;
 }
 
@@ -530,7 +553,7 @@ void SceneManager::saveScene()
             {
                 j["color"] = {it->Color.r, it->Color.g, it->Color.b, it->Color.a};
                 j["position"] = {it->Position.x, it->Position.y, it->Position.z};
-                j["shdaerName"] = it->shader.Name;
+                j["shaderName"] = it->shader.Name;
                  j["maxParticles"] = it->maxParticles;
             }
             else
@@ -632,6 +655,7 @@ void SceneManager::LoadScene(const std::string &path)
         delete node;
     }
     nodes.clear();
+    nodeMap.clear();
     models.clear();
     lights.clear(); // Add this if lights are persistent
     
@@ -654,32 +678,50 @@ void SceneManager::LoadScene(const std::string &path)
         if (type == NodeType::Model && j.contains("modelPath"))
         {
             std::string modelPath = j["modelPath"];
-            addToParent(name, modelPath, type, parent->ID);
+            addToParent(name, modelPath, type, parent->ID, id);
 
             // Set model transform if available
             auto *model = getModelByID(id);
-            if (model)
+            Node *newNode = find_node(id);
+            if (model && newNode)
             {
                 if (j.contains("position"))
-                    model->setPosition(glm::vec3(j["position"][0], j["position"][1], j["position"][2]));
+                {
+                    glm::vec3 pos(j["position"][0], j["position"][1], j["position"][2]);
+                    model->setPosition(pos);
+                    newNode->position = pos;
+                }
                 if (j.contains("rotation"))
-                    model->setRotation(glm::vec3(j["rotation"][0], j["rotation"][1], j["rotation"][2]));
+                {
+                    glm::vec3 rot(j["rotation"][0], j["rotation"][1], j["rotation"][2]);
+                    model->setRotation(rot);
+                    newNode->rotation = rot;
+                }
                 if (j.contains("scale"))
-                    model->setScale(glm::vec3(j["scale"][0], j["scale"][1], j["scale"][2]));
+                {
+                    glm::vec3 scl(j["scale"][0], j["scale"][1], j["scale"][2]);
+                    model->setScale(scl);
+                    newNode->scale = scl;
+                }
             }
         }
         else if (type == NodeType::Light)
         {
             if (parent->type == NodeType::Particles)
                 return;
-            addToParent(name, type, parent->ID, LightType::DIRECTIONAL);
+            addToParent(name, type, parent->ID, LightType::DIRECTIONAL, id);
 
             // Set light data if available
             auto *light = getLightByID(id);
-            if (light)
+            Node *newNode = find_node(id);
+            if (light && newNode)
             {
                 if (j.contains("position"))
-                    light->position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
+                {
+                    glm::vec3 pos(j["position"][0], j["position"][1], j["position"][2]);
+                    light->position = pos;
+                    newNode->position = pos;
+                }
                 if (j.contains("color"))
                     light->color = glm::vec3(j["color"][0], j["color"][1], j["color"][2]);
             }
@@ -694,13 +736,18 @@ void SceneManager::LoadScene(const std::string &path)
             if (j.contains("maxParticles"))
                 maxParticles = j["maxParticles"];
 
-            addToParent(name, type, parent->ID, shaderName, maxParticles);
+            addToParent(name, type, parent->ID, shaderName, maxParticles, id);
 
             auto *emitter = getEmitterByID(id);
-            if (emitter)
+            Node *newNode = find_node(id);
+            if (emitter && newNode)
             {
                 if (j.contains("position"))
-                    emitter->Position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
+                {
+                    glm::vec3 pos(j["position"][0], j["position"][1], j["position"][2]);
+                    emitter->Position = pos;
+                    newNode->position = pos;
+                }
                 if (j.contains("color"))
                     emitter->Color = glm::vec4(j["color"][0], j["color"][1], j["color"][2], j["color"][3]);
             }
@@ -710,11 +757,12 @@ void SceneManager::LoadScene(const std::string &path)
             float mass = 1.0f;
             if (j.contains("mass"))
                 mass = j["mass"];
-            addToParent(name, type, parent->ID, RigidBodyShape::CUBE, mass);
+            addToParent(name, type, parent->ID, RigidBodyShape::CUBE, mass, id);
 
             // Set physics rigid body position if available
             auto *body = getRigidBodyByID(id);
-            if (body && j.contains("position"))
+            Node *newNode = find_node(id);
+            if (body && newNode && j.contains("position"))
             {
                 btTransform trans = body->getWorldTransform();
                 trans.setOrigin(btVector3(j["position"][0], j["position"][1], j["position"][2]));
@@ -726,11 +774,22 @@ void SceneManager::LoadScene(const std::string &path)
                 
                 // Save loaded position as the initial transform
                 initialTransforms[id] = trans;
+                newNode->position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
             }
         }
         else
         {
-            addToParent(name, type, parent->ID);
+            addToParent(name, type, parent->ID, id);
+            Node *newNode = find_node(id);
+            if (newNode)
+            {
+                if (j.contains("position"))
+                    newNode->position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
+                if (j.contains("rotation"))
+                    newNode->rotation = glm::vec3(j["rotation"][0], j["rotation"][1], j["rotation"][2]);
+                if (j.contains("scale"))
+                    newNode->scale = glm::vec3(j["scale"][0], j["scale"][1], j["scale"][2]);
+            }
         }
 
         // Recurse into children
@@ -751,6 +810,7 @@ void SceneManager::LoadScene(const std::string &path)
 
     root = new Node{rootID, rootName, rootType, nullptr, {}};
     nodes.push_back(root);
+    nodeMap[root->ID] = root;
     nextID = std::max(nextID, rootID + 1);
 
     if (rootJson.contains("children"))
@@ -766,22 +826,77 @@ void SceneManager::LoadScene(const std::string &path)
 
 Node *SceneManager::find_node(unsigned int id)
 {
-    if (id == root->ID)
-        return root;
-
-    if (id < 0 || id >= nextID)
-    {
-        std::cerr << "[SceneManager] Error: Invalid ID " << id << " requested." << std::endl;
-        return nullptr;
-    }
-
-    for (Node *node : nodes)
-    {
-        if (node->ID == id)
-            return node;
-    }
-
+    auto it = nodeMap.find(id);
+    if (it != nodeMap.end())
+        return it->second;
     return nullptr;
+}
+
+glm::mat4 SceneManager::getWorldTransform(unsigned int id)
+{
+    Node *node = find_node(id);
+    if (!node)
+        return glm::mat4(1.0f);
+
+    std::vector<Node *> path;
+    Node *curr = node;
+    while (curr)
+    {
+        path.push_back(curr);
+        curr = curr->parent;
+    }
+
+    glm::mat4 worldMat = glm::mat4(1.0f);
+    for (auto it = path.rbegin(); it != path.rend(); ++it)
+    {
+        Node *n = *it;
+        glm::mat4 localMat = glm::mat4(1.0f);
+        if (n->type == NodeType::Model)
+        {
+            Model *model = getModelByID(n->ID);
+            if (model)
+                localMat = model->getModelMatrix();
+        }
+        else if (n->type == NodeType::Light)
+        {
+            Light *light = getLightByID(n->ID);
+            if (light)
+                localMat = glm::translate(glm::mat4(1.0f), light->position);
+        }
+        else if (n->type == NodeType::Particles)
+        {
+            ParticleEmitter *emitter = getEmitterByID(n->ID);
+            if (emitter)
+                localMat = glm::translate(glm::mat4(1.0f), emitter->Position);
+        }
+        else if (n->type == NodeType::RigidBody)
+        {
+            btRigidBody *body = getRigidBodyByID(n->ID);
+            if (body)
+            {
+                btTransform trans;
+                if (body->getMotionState())
+                    body->getMotionState()->getWorldTransform(trans);
+                else
+                    trans = body->getWorldTransform();
+                
+                float m[16];
+                trans.getOpenGLMatrix(m);
+                localMat = glm::make_mat4(m);
+            }
+        }
+        else
+        {
+            localMat = glm::translate(glm::mat4(1.0f), n->position);
+            localMat = glm::rotate(localMat, n->rotation.x, glm::vec3(1.f, 0.f, 0.f));
+            localMat = glm::rotate(localMat, n->rotation.y, glm::vec3(0.f, 1.f, 0.f));
+            localMat = glm::rotate(localMat, n->rotation.z, glm::vec3(0.f, 0.f, 1.f));
+            localMat = glm::scale(localMat, n->scale);
+        }
+        
+        worldMat = worldMat * localMat;
+    }
+    return worldMat;
 }
 
 void SceneManager::ResetPhysics()

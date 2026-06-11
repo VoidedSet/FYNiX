@@ -46,6 +46,7 @@ namespace
     void InspectLightNode(SceneManager *scene, Node *selectedNode);
     void InspectParticleEmitterNode(SceneManager *scene, Node *particleNode);
     void InspectRigidBodyNode(SceneManager *scene, Node *rigidBodyNode);
+    void InspectEmptyNode(SceneManager *scene, Node *selectedNode);
 }
 
 // ===================================================================================
@@ -398,6 +399,10 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
     case NodeType::RigidBody:
         InspectRigidBodyNode(scene, selectedNode);
         break;
+    case NodeType::Empty:
+    case NodeType::Root:
+        InspectEmptyNode(scene, selectedNode);
+        break;
     default:
         ImGui::TextDisabled("This node type has no editable properties.");
         break;
@@ -462,11 +467,20 @@ namespace
 
         ImGui::PushItemWidth(-FLT_MIN * 0.5f); // Make drag floats take up half the width
         if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
+        {
             model->setPosition(position);
+            selectedNode->position = position;
+        }
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 0.1f))
+        {
             model->setRotation(rotation);
+            selectedNode->rotation = rotation;
+        }
         if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f))
+        {
             model->setScale(scale);
+            selectedNode->scale = scale;
+        }
         ImGui::PopItemWidth();
 
         if (model->hasAnimation)
@@ -508,7 +522,10 @@ namespace
         Light *light = scene->getLightByID(selectedNode->ID);
         if (!light)
             return;
-        ImGui::DragFloat3("Position", glm::value_ptr(light->position), 0.1f);
+        if (ImGui::DragFloat3("Position", glm::value_ptr(light->position), 0.1f))
+        {
+            selectedNode->position = light->position;
+        }
         ImGui::ColorEdit3("Color", glm::value_ptr(light->color));
     }
 
@@ -524,6 +541,7 @@ namespace
         if (ImGui::DragFloat3("Position", glm::value_ptr(emitter->Position), 0.1f))
         {
             light->position = emitter->Position;
+            particleNode->position = emitter->Position;
         }
         if (ImGui::ColorEdit4("Color", glm::value_ptr(emitter->Color)))
         {
@@ -552,9 +570,15 @@ namespace
 
         bool transformChanged = false;
         if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
+        {
             transformChanged = true;
+            rigidBodyNode->position = position;
+        }
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 1.0f))
+        {
             transformChanged = true;
+            rigidBodyNode->rotation = glm::radians(eulerRotation);
+        }
 
         if (transformChanged)
         {
@@ -570,6 +594,7 @@ namespace
         {
             body->getCollisionShape()->setLocalScaling(btVector3(scale.x, scale.y, scale.z));
             scene->physics->getDynamicsWorld()->updateSingleAabb(body);
+            rigidBodyNode->scale = scale;
         }
 
         ImGui::Spacing();
@@ -591,6 +616,25 @@ namespace
         float restitution = body->getRestitution();
         if (ImGui::DragFloat("Restitution", &restitution, 0.05f, 0.0f, 1.0f))
             body->setRestitution(restitution);
+    }
+
+    void InspectEmptyNode(SceneManager *scene, Node *selectedNode)
+    {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Text("Transform");
+        ImGui::Spacing();
+
+        ImGui::PushItemWidth(-FLT_MIN * 0.5f);
+        ImGui::DragFloat3("Position", glm::value_ptr(selectedNode->position), 0.01f);
+        
+        glm::vec3 eulerRotation = glm::degrees(selectedNode->rotation);
+        if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 0.1f))
+        {
+            selectedNode->rotation = glm::radians(eulerRotation);
+        }
+        ImGui::DragFloat3("Scale", glm::value_ptr(selectedNode->scale), 0.01f);
+        ImGui::PopItemWidth();
     }
 
     double ExecuteMicroBenchmark(bool useLockFree)

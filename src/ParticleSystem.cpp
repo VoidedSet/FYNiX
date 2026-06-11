@@ -66,13 +66,13 @@ void ParticleEmitter::init()
     glBindVertexArray(0);
 }
 
-void ParticleEmitter::SpawnParticle(Particle particle)
+void ParticleEmitter::SpawnParticle(Particle particle, const glm::vec3 &spawnPos)
 {
     unsigned int particleIndex = this->firstUnusedParticle();
     if (particleIndex < this->particles.size())
     {
         Particle &p = this->particles[particleIndex];
-        p.Position = particle.Position + Position;
+        p.Position = particle.Position + spawnPos;
         p.Velocity = particle.Velocity;
         p.Life = particle.Life;
         p.Size = particle.Size;

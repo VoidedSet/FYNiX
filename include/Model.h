@@ -65,8 +65,8 @@ private:
     Animator animator;
     std::vector<glm::mat4> finalBoneMatrices;
 
-    glm::vec3 position = glm::vec3(1.f),
-              rotation = glm::vec3(1.f),
+    glm::vec3 position = glm::vec3(0.f),
+              rotation = glm::vec3(0.f),
               scale = glm::vec3(1.f);
 
     bool loadModel(std::string path, bool uploadToGPU);
