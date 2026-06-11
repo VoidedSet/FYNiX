@@ -6,6 +6,7 @@
 #include <string>
 #include <dirent.h>
 #include <mutex>
+#include <atomic>
 
 #include <json.hpp>
 
@@ -55,6 +56,7 @@ public:
 
     ShaderManager *sm = nullptr;
     PhysicsEngine *physics = nullptr;
+    std::atomic<int> physicsCounter{0};
 
     bool drawLights = true,
          drawPhysics = true,

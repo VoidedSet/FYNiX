@@ -1,0 +1,748 @@
+{
+  "projectName": "Stress Test Benchmark",
+  "scenegraph": {
+    "id": 0,
+    "name": "Root",
+    "type": "Root",
+    "children": [
+      {
+        "id": 1,
+        "name": "Light_0",
+        "type": "Light",
+        "position": [
+          -3.9578936364071566,
+          2.3740703132203054,
+          3.9143859206944693
+        ],
+        "color": [
+          0.8432159248165281,
+          0.8478546156543163,
+          0.6335414516215592
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Light_1",
+        "type": "Light",
+        "position": [
+          -0.741132238286653,
+          5.6455714146486775,
+          -8.64762121265918
+        ],
+        "color": [
+          0.5429923283660802,
+          0.5587264539674823,
+          0.6187365278912652
+        ]
+      },
+      {
+        "id": 3,
+        "name": "Light_2",
+        "type": "Light",
+        "position": [
+          -0.7857646391593889,
+          2.324242321398126,
+          -3.219559140964721
+        ],
+        "color": [
+          0.9044654514179549,
+          0.8744019480173586,
+          0.973083233398834
+        ]
+      },
+      {
+        "id": 4,
+        "name": "Light_3",
+        "type": "Light",
+        "position": [
+          6.989675341718158,
+          3.89313159592965,
+          0.5933929820886306
+        ],
+        "color": [
+          0.7505467809739803,
+          0.7990569342535281,
+          0.5743948282448919
+        ]
+      },
+      {
+        "id": 5,
+        "name": "Light_4",
+        "type": "Light",
+        "position": [
+          5.11867556496642,
+          3.4923461579346915,
+          1.5391730676978543
+        ],
+        "color": [
+          0.7215931553647155,
+          0.9097299728523194,
+          0.8940242650790035
+        ]
+      },
+      {
+        "id": 6,
+        "name": "Light_5",
+        "type": "Light",
+        "position": [
+          8.354388256096971,
+          2.0995051013248194,
+          4.442011230668276
+        ],
+        "color": [
+          0.6528561131910512,
+          0.6993240395105481,
+          0.8345041896109705
+        ]
+      },
+      {
+        "id": 7,
+        "name": "Light_6",
+        "type": "Light",
+        "position": [
+          -5.511092090692545,
+          6.537646445614163,
+          0.2593257960009243
+        ],
+        "color": [
+          0.5676171420589247,
+          0.9626194617501546,
+          0.6012926846129214
+        ]
+      },
+      {
+        "id": 8,
+        "name": "Light_7",
+        "type": "Light",
+        "position": [
+          -1.3865210387914608,
+          7.2834284656012835,
+          9.487217032494119
+        ],
+        "color": [
+          0.8235332353536833,
+          0.9707577194617584,
+          0.523501249949835
+        ]
+      },
+      {
+        "id": 9,
+        "name": "Dancer_0",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          -5.0,
+          1.0,
+          -6.0
+        ],
+        "rotation": [
+          0.0,
+          2.452170687402877,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 10,
+        "name": "Dancer_1",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          -1.5,
+          1.0,
+          -6.0
+        ],
+        "rotation": [
+          0.0,
+          0.9312978587786249,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 11,
+        "name": "Dancer_2",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          2.0,
+          1.0,
+          -6.0
+        ],
+        "rotation": [
+          0.0,
+          0.6512786690104732,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 12,
+        "name": "Dancer_3",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          5.5,
+          1.0,
+          -6.0
+        ],
+        "rotation": [
+          0.0,
+          0.3254166072747764,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Dancer_4",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          -5.0,
+          1.0,
+          -2.0
+        ],
+        "rotation": [
+          0.0,
+          2.1932117719558253,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 14,
+        "name": "Dancer_5",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          -1.5,
+          1.0,
+          -2.0
+        ],
+        "rotation": [
+          0.0,
+          2.792674670954448,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 15,
+        "name": "Dancer_6",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          2.0,
+          1.0,
+          -2.0
+        ],
+        "rotation": [
+          0.0,
+          2.494660187854194,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 16,
+        "name": "Dancer_7",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          5.5,
+          1.0,
+          -2.0
+        ],
+        "rotation": [
+          0.0,
+          0.8391169681687449,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 17,
+        "name": "Dancer_8",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          -5.0,
+          1.0,
+          2.0
+        ],
+        "rotation": [
+          0.0,
+          3.0846941847426406,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 18,
+        "name": "Dancer_9",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          -1.5,
+          1.0,
+          2.0
+        ],
+        "rotation": [
+          0.0,
+          0.10938663077629059,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 19,
+        "name": "Dancer_10",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          2.0,
+          1.0,
+          2.0
+        ],
+        "rotation": [
+          0.0,
+          0.3089870547950177,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 20,
+        "name": "Dancer_11",
+        "type": "Model",
+        "modelPath": "assets/dancer.gltf",
+        "position": [
+          5.5,
+          1.0,
+          2.0
+        ],
+        "rotation": [
+          0.0,
+          1.4666274172895217,
+          0.0
+        ],
+        "scale": [
+          0.0001,
+          0.0001,
+          0.0001
+        ]
+      },
+      {
+        "id": 21,
+        "name": "RunningGuy_0",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          -5.5,
+          0.86,
+          -4.0
+        ],
+        "rotation": [
+          0.0,
+          2.4444907939497424,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 22,
+        "name": "RunningGuy_1",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          -2.0,
+          0.86,
+          -4.0
+        ],
+        "rotation": [
+          0.0,
+          2.2515943493512443,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 23,
+        "name": "RunningGuy_2",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          1.5,
+          0.86,
+          -4.0
+        ],
+        "rotation": [
+          0.0,
+          0.1565159555237419,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 24,
+        "name": "RunningGuy_3",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          5.0,
+          0.86,
+          -4.0
+        ],
+        "rotation": [
+          0.0,
+          0.29339925627580565,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 25,
+        "name": "RunningGuy_4",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          -5.5,
+          0.86,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          2.443518636393983,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 26,
+        "name": "RunningGuy_5",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          -2.0,
+          0.86,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          2.0788482681453755,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 27,
+        "name": "RunningGuy_6",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          1.5,
+          0.86,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          1.4817067686300895,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 28,
+        "name": "RunningGuy_7",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          5.0,
+          0.86,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          1.9848855276700945,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 29,
+        "name": "RunningGuy_8",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          -5.5,
+          0.86,
+          4.0
+        ],
+        "rotation": [
+          0.0,
+          1.873460209254375,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 30,
+        "name": "RunningGuy_9",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          -2.0,
+          0.86,
+          4.0
+        ],
+        "rotation": [
+          0.0,
+          2.9384911889751755,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 31,
+        "name": "RunningGuy_10",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          1.5,
+          0.86,
+          4.0
+        ],
+        "rotation": [
+          0.0,
+          2.881089074556234,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 32,
+        "name": "RunningGuy_11",
+        "type": "Model",
+        "modelPath": "assets/running_guy.gltf",
+        "position": [
+          5.0,
+          0.86,
+          4.0
+        ],
+        "rotation": [
+          0.0,
+          2.929743512261003,
+          0.0
+        ],
+        "scale": [
+          0.2,
+          0.2,
+          0.2
+        ]
+      },
+      {
+        "id": 33,
+        "name": "HeavyEmitter_0",
+        "type": "ParticleEmitter",
+        "shdaerName": "particle",
+        "maxParticles": 150000,
+        "position": [
+          -6.0,
+          0.0,
+          -5.0
+        ],
+        "color": [
+          0.3636812221068616,
+          0.22047130299369544,
+          0.2835009189039453,
+          1.0
+        ],
+        "children": []
+      },
+      {
+        "id": 34,
+        "name": "HeavyEmitter_1",
+        "type": "ParticleEmitter",
+        "shdaerName": "particle",
+        "maxParticles": 150000,
+        "position": [
+          0.0,
+          0.0,
+          -5.0
+        ],
+        "color": [
+          0.514382875319215,
+          0.8765730880923333,
+          0.8878253661838602,
+          1.0
+        ],
+        "children": []
+      },
+      {
+        "id": 35,
+        "name": "HeavyEmitter_2",
+        "type": "ParticleEmitter",
+        "shdaerName": "particle",
+        "maxParticles": 150000,
+        "position": [
+          6.0,
+          0.0,
+          -5.0
+        ],
+        "color": [
+          0.5924767097356194,
+          0.8810752887121502,
+          0.32840779215389404,
+          1.0
+        ],
+        "children": []
+      },
+      {
+        "id": 36,
+        "name": "HeavyEmitter_3",
+        "type": "ParticleEmitter",
+        "shdaerName": "particle",
+        "maxParticles": 150000,
+        "position": [
+          -6.0,
+          0.0,
+          5.0
+        ],
+        "color": [
+          0.5871720650936076,
+          0.6849716167019426,
+          0.8301897917183838,
+          1.0
+        ],
+        "children": []
+      },
+      {
+        "id": 37,
+        "name": "HeavyEmitter_4",
+        "type": "ParticleEmitter",
+        "shdaerName": "particle",
+        "maxParticles": 150000,
+        "position": [
+          0.0,
+          0.0,
+          5.0
+        ],
+        "color": [
+          0.5160392118199147,
+          0.5679802361866779,
+          0.5693443610131818,
+          1.0
+        ],
+        "children": []
+      },
+      {
+        "id": 38,
+        "name": "HeavyEmitter_5",
+        "type": "ParticleEmitter",
+        "shdaerName": "particle",
+        "maxParticles": 150000,
+        "position": [
+          6.0,
+          0.0,
+          5.0
+        ],
+        "color": [
+          0.36409619333807747,
+          0.6289486329709466,
+          0.8546473410746955,
+          1.0
+        ],
+        "children": []
+      }
+    ]
+  }
+}

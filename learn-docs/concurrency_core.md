@@ -168,5 +168,20 @@ We resolved this by:
 3. Updating all mesh texture references to use the newly generated OpenGL texture IDs.
 4. Uploading mesh geometry (VBO/EBO) afterward.
 
+---
+
+## 9. Concurrent Physics Pipelining
+
+Physics engine updates (`btDiscreteDynamicsWorld::stepSimulation`) are highly intensive CPU-bound calculations that resolve rigid body dynamics, collisions, and solver constraints. Running this sequentially on the main thread during rendering introduces huge latency.
+
+### The Pipelining Pattern:
+Instead of updating physics sequentially at render time, we step the simulation concurrently with other CPU work:
+1. **Asynchronous Dispatch**: At the very start of the frame rendering (in `RenderModels`), we submit the physics step (`physics->update`) as a background job to the `JobSystem`.
+2. **Subsystem Overlap**: While physics runs on a worker thread, the main thread concurrently coordinates skeletal animation updates, renders static/animated models, updates particles, and draws lights.
+3. **Synchronization**: At the end of the frame (in `RenderPhysics`), we call `JobSystem::Wait(&physicsCounter)` to block the main thread until the simulation finishes, right before issuing OpenGL debug drawing commands (`physics->Draw`).
+
+This overlaps physics simulation with the rendering of other scene components, reducing frame times and avoiding main thread stalls.
+
+
 
 

@@ -76,7 +76,7 @@ Mesh::Mesh(MeshType type) : VBO(VertexBuffer(cubeVert, sizeof(cubeVert))), EBO(E
     indices.push_back(0);
     if (type == MeshType::CUBE)
     {
-        VAO = VertexArray();
+        VAO.Init();
         VAO.Bind();
         VBO.Bind();
         EBO.Bind();

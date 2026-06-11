@@ -234,6 +234,18 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 
 void SceneManager::RenderModels(Shader &shader, float deltaTime)
 {
+    // 0. Kick off asynchronous physics simulation update
+    if (simulate && physics)
+    {
+        physicsCounter.store(1, std::memory_order_relaxed);
+        Job physicsJob;
+        physicsJob.completionCounter = &physicsCounter;
+        physicsJob.work = [this, deltaTime]() {
+            physics->update(deltaTime);
+        };
+        JobSystem::Get().Submit(physicsJob);
+    }
+
     int lightCount = lights.size();
     shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
 
@@ -305,8 +317,11 @@ void SceneManager::RenderParticles(float dt)
 
 void SceneManager::RenderPhysics(float dt, Shader &shader)
 {
-    if (simulate)
-        physics->update(dt);
+    // Wait for the background physics update job to complete before drawing
+    if (simulate && physics)
+    {
+        JobSystem::Get().Wait(&physicsCounter);
+    }
 
     if (drawPhysics && physics)
     {
