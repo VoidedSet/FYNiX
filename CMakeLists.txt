@@ -50,3 +50,8 @@ target_link_libraries(fynix
     libBulletCollision.a
     libLinearMath.a
 )
+
+# Standalone Job System stress test
+add_executable(test_job_system tests/test_job_system.cpp src/JobSystem.cpp)
+target_include_directories(test_job_system PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
