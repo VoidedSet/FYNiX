@@ -85,6 +85,32 @@ NodeType SceneManager::stringToNodeType(const std::string &str)
     return NodeType::Empty;
 }
 
+std::string SceneManager::lightTypeToString(LightType type)
+{
+    switch (type)
+    {
+    case LightType::DIRECTIONAL:
+        return "Directional";
+    case LightType::POINTLIGHT:
+        return "PointLight";
+    case LightType::SPOT:
+        return "Spot";
+    default:
+        return "Directional";
+    }
+}
+
+LightType SceneManager::stringToLightType(const std::string &str)
+{
+    if (str == "Directional")
+        return LightType::DIRECTIONAL;
+    if (str == "PointLight")
+        return LightType::POINTLIGHT;
+    if (str == "Spot")
+        return LightType::SPOT;
+    return LightType::DIRECTIONAL;
+}
+
 SceneManager::SceneManager(const std::string &projectPath) : projectPath(projectPath)
 {
     root = new Node{0, "Root", NodeType::Root, nullptr, {}};
@@ -677,6 +703,7 @@ json SceneManager::serializeScene()
                 Light &light = it->second;
                 j["color"] = {light.color.x, light.color.y, light.color.z};
                 j["position"] = {light.position.x, light.position.y, light.position.z};
+                j["lightType"] = lightTypeToString(light.type);
             }
         }
 
@@ -818,7 +845,11 @@ void SceneManager::deserializeScene(const nlohmann::json &data)
         {
             if (parent->type == NodeType::Particles)
                 return;
-            addToParent(name, type, parent->ID, LightType::DIRECTIONAL, id);
+            
+            LightType parsedType = LightType::DIRECTIONAL;
+            if (j.contains("lightType"))
+                parsedType = stringToLightType(j["lightType"]);
+            addToParent(name, type, parent->ID, parsedType, id);
 
             // Set light data if available
             auto *light = getLightByID(id);

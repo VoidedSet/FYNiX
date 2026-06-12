@@ -1,38 +1,8 @@
 {
-  "activeCameraID": 0,
+  "activeCameraID": 6,
   "projectName": "",
   "scenegraph": {
     "children": [
-      {
-        "color": [
-          0.4152047038078308,
-          1.0,
-          0.5588386058807373
-        ],
-        "id": 1,
-        "name": "NewNode",
-        "position": [
-          0.46000000834465027,
-          0.5400000214576721,
-          -2.2799999713897705
-        ],
-        "type": "Light"
-      },
-      {
-        "color": [
-          0.5964908599853516,
-          0.0,
-          1.0
-        ],
-        "id": 2,
-        "name": "NewNode",
-        "position": [
-          0.0,
-          8.813786187420803e-39,
-          2.6500000953674316
-        ],
-        "type": "Light"
-      },
       {
         "id": 3,
         "material": {
@@ -73,21 +43,6 @@
         "type": "Model"
       },
       {
-        "color": [
-          1.0,
-          1.0,
-          1.0
-        ],
-        "id": 10,
-        "name": "NewNode",
-        "position": [
-          6.473998905180655e-43,
-          -137413263360.0,
-          2.382207389352189e-44
-        ],
-        "type": "Light"
-      },
-      {
         "children": [
           {
             "color": [
@@ -96,6 +51,7 @@
               1.0
             ],
             "id": 21,
+            "lightType": "Directional",
             "name": "sunLight",
             "position": [
               2.382207389352189e-44,
@@ -129,9 +85,9 @@
         "mass": 3.299999952316284,
         "name": "sun",
         "position": [
-          1.0067672729492188,
-          0.4999999701976776,
-          1.818068027496338
+          1.0,
+          5.0,
+          1.0
         ],
         "shape": "CUBE",
         "type": "RigidBody"

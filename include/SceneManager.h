@@ -88,6 +88,8 @@ public:
 
     std::string nodeTypeToString(NodeType type);
     NodeType stringToNodeType(const std::string &str);
+    std::string lightTypeToString(LightType type);
+    LightType stringToLightType(const std::string &str);
 
     SceneManager(const std::string &projectPath);
     ~SceneManager();

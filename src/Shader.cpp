@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include <cstring>
 
 using namespace std;
 
@@ -94,7 +95,7 @@ void Shader::checkCompileErrors(unsigned int id, const char *type)
     int success;
     char infoLog[512];
 
-    if (type == "Shader")
+    if (strcmp(type, "Shader") == 0)
     {
         glGetShaderiv(id, GL_COMPILE_STATUS, &success);
 
@@ -105,7 +106,7 @@ void Shader::checkCompileErrors(unsigned int id, const char *type)
                  << infoLog << endl;
         }
     }
-    else if (type == "Program")
+    else if (strcmp(type, "Program") == 0)
     {
         glGetProgramiv(id, GL_LINK_STATUS, &success);
 
