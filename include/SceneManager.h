@@ -76,6 +76,16 @@ public:
     float viewportYaw = -90.0f;
     float viewportPitch = 0.0f;
 
+    bool isDirty = false;
+    std::vector<nlohmann::json> undoStack;
+    std::vector<nlohmann::json> redoStack;
+
+    nlohmann::json serializeScene();
+    void deserializeScene(const nlohmann::json &data);
+    void pushUndoState();
+    void undo();
+    void redo();
+
     std::string nodeTypeToString(NodeType type);
     NodeType stringToNodeType(const std::string &str);
 

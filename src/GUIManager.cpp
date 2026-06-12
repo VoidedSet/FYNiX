@@ -213,6 +213,15 @@ void GUIManager::Shutdown()
 
 void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
 {
+    // Keyboard shortcuts for Undo/Redo
+    if (ImGui::GetIO().KeyCtrl)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_Z))
+            scene->undo();
+        if (ImGui::IsKeyPressed(ImGuiKey_Y))
+            scene->redo();
+    }
+
     ImGui::SetNextWindowPos(ImVec2(windowWidth - SIDE_PANEL_WIDTH, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(SIDE_PANEL_WIDTH, windowHeight), ImGuiCond_Always);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f); // No border for a cleaner look
@@ -224,8 +233,44 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
             if (ImGui::Button("Add Node...", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
                 showAddNodeModal = true;
             ImGui::SameLine();
+            
+            // Highlight Save button when scene has unsaved changes (dirty)
+            bool wasDirty = scene->isDirty;
+            if (wasDirty)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.7f, 0.3f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.5f, 0.1f, 1.0f));
+            }
+            else
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+            }
+
             if (ImGui::Button("Save Scene", ImVec2(-1, 0)))
                 scene->saveScene(); // Fill remaining space
+
+            if (wasDirty)
+                ImGui::PopStyleColor(3);
+            else
+                ImGui::PopStyleVar();
+
+            // Undo / Redo controls in UI
+            ImGui::Spacing();
+            bool canUndo = !scene->undoStack.empty();
+            bool canRedo = !scene->redoStack.empty();
+            
+            if (!canUndo) ImGui::BeginDisabled();
+            if (ImGui::Button("Undo", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
+                scene->undo();
+            if (!canUndo) ImGui::EndDisabled();
+            
+            ImGui::SameLine();
+            
+            if (!canRedo) ImGui::BeginDisabled();
+            if (ImGui::Button("Redo", ImVec2(-1, 0)))
+                scene->redo();
+            if (!canRedo) ImGui::EndDisabled();
 
             ImGui::Spacing();
             ImGui::Separator();
@@ -252,6 +297,7 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                             globalCamera->camPos = scene->viewportCamPos;
                             globalCamera->yaw = scene->viewportYaw;
                             globalCamera->pitch = scene->viewportPitch;
+                            globalCamera->camUp = glm::vec3(0.0f, 1.0f, 0.0f);
                             
                             glm::vec3 direction;
                             direction.x = cos(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
@@ -363,6 +409,7 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                         Node *cameraNode = scene->find_node(scene->activeCameraID);
                         if (cameraNode)
                         {
+                            scene->pushUndoState();
                             if (cameraNode->parent)
                             {
                                 glm::mat4 parentWorldMat = scene->getWorldTransform(cameraNode->parent->ID);
@@ -450,6 +497,7 @@ void GUIManager::DrawAddNodeModal()
         ImGui::Separator();
         if (ImGui::Button("OK", ImVec2(120, 0)))
         {
+            scene->pushUndoState();
             std::string nameStr(nodeNameInput);
             std::string modelPathStr(modelPathInput);
             std::string shaderNameStr(shaderNameInput);
@@ -554,6 +602,7 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
     if (ImGui::Button("Delete Node", ImVec2(-1, 0)))
     {
         std::cout << "Deleting node with ID: " << selectedNode->ID << std::endl;
+        scene->pushUndoState();
         scene->deleteNode(selectedNode->ID);
         selectedNodeID = -1;
     }
@@ -610,16 +659,48 @@ namespace
             model->setPosition(position);
             selectedNode->position = position;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 0.1f))
         {
             model->setRotation(rotation);
             selectedNode->rotation = rotation;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f))
         {
             model->setScale(scale);
             selectedNode->scale = scale;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        ImGui::PopItemWidth();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Text("Material Parameters");
+        ImGui::Spacing();
+
+        ImGui::PushItemWidth(-FLT_MIN * 0.5f);
+        if (ImGui::ColorEdit3("Ambient", glm::value_ptr(model->material.ambient))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(model->material.diffuse))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::ColorEdit3("Specular", glm::value_ptr(model->material.specular))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::DragFloat("Shininess", &model->material.shininess, 0.5f, 1.0f, 256.0f, "%.1f")) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
         ImGui::PopItemWidth();
 
         if (model->hasAnimation)
@@ -665,7 +746,12 @@ namespace
         {
             selectedNode->position = light->position;
         }
-        ImGui::ColorEdit3("Color", glm::value_ptr(light->color));
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::ColorEdit3("Color", glm::value_ptr(light->color))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
     }
 
     void InspectParticleEmitterNode(SceneManager *scene, Node *particleNode)
@@ -682,10 +768,15 @@ namespace
             light->position = emitter->Position;
             particleNode->position = emitter->Position;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::ColorEdit4("Color", glm::value_ptr(emitter->Color)))
         {
             light->color = glm::vec3(emitter->Color);
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
     }
 
     void InspectRigidBodyNode(SceneManager *scene, Node *rigidBodyNode)
@@ -713,11 +804,16 @@ namespace
             transformChanged = true;
             rigidBodyNode->position = position;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 1.0f))
         {
             transformChanged = true;
             rigidBodyNode->rotation = glm::radians(eulerRotation);
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
 
         if (transformChanged)
         {
@@ -744,6 +840,8 @@ namespace
 
             rigidBodyNode->scale = scale;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
 
         ImGui::Spacing();
         ImGui::Separator();
@@ -758,12 +856,20 @@ namespace
                 body->getCollisionShape()->calculateLocalInertia(mass, localInertia);
             body->setMassProps(mass, localInertia);
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         float friction = body->getFriction();
         if (ImGui::DragFloat("Friction", &friction, 0.05f, 0.0f, 5.0f))
             body->setFriction(friction);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         float restitution = body->getRestitution();
         if (ImGui::DragFloat("Restitution", &restitution, 0.05f, 0.0f, 1.0f))
             body->setRestitution(restitution);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
     }
 
     void InspectEmptyNode(SceneManager *scene, Node *selectedNode)
@@ -774,14 +880,22 @@ namespace
         ImGui::Spacing();
 
         ImGui::PushItemWidth(-FLT_MIN * 0.5f);
-        ImGui::DragFloat3("Position", glm::value_ptr(selectedNode->position), 0.01f);
+        if (ImGui::DragFloat3("Position", glm::value_ptr(selectedNode->position), 0.01f)) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
         
         glm::vec3 eulerRotation = glm::degrees(selectedNode->rotation);
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 0.1f))
         {
             selectedNode->rotation = glm::radians(eulerRotation);
         }
-        ImGui::DragFloat3("Scale", glm::value_ptr(selectedNode->scale), 0.01f);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::DragFloat3("Scale", glm::value_ptr(selectedNode->scale), 0.01f)) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         ImGui::PopItemWidth();
     }
 

@@ -48,11 +48,11 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 5.1 | Particle emitter shader name saved as `"shdaerName"` and loaded as `"shaderName"` | 🔴 Bug | **Done** |
 | 5.2 | Scene load assigns IDs based on insertion order instead of saved JSON IDs | 🔴 Bug | **Done** |
 | 5.3 | Loaded light type is hardcoded to `DIRECTIONAL` | 🔴 Bug | Left to fix |
-| 5.4 | Absolute path saved for models (`it->directory`) instead of relative path | 🟠 Caveat | Left to fix |
+| 5.4 | Absolute path saved for models (`it->directory`) instead of relative path | 🟠 Caveat | To be done later |
 | 5.5 | `LoadScene` does not clear `particleEmitters` before loading | 🟠 Caveat | **Done** |
-| 5.6 | `LoadScene` does not reset GUI `selectedNodeID` | 🟠 Caveat | Left to fix |
-| 5.7 | No "Load Scene" button in GUI | 🟡 Improvement | Left to fix |
-| 5.8 | `saveScene` writes directly to target file with no backup | 🟡 Improvement | Left to fix |
+| 5.6 | `LoadScene` does not reset GUI `selectedNodeID` | 🟠 Caveat | To be done later |
+| 5.7 | No "Load Scene" button in GUI | 🟡 Improvement | To be done later |
+| 5.8 | `saveScene` writes directly to target file with no backup | 🟡 Improvement | To be done later |
 | 5.9 | `ShaderManager::deleteShader()` is declared but not implemented | 🔴 Bug | Left to fix |
 | 5.10| `ShaderManager` uses ordered `std::map` instead of `std::unordered_map` | 🟠 Caveat | Left to fix |
 | **6** | **Animation System** | | |
@@ -104,8 +104,8 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 11.3| Heavy transitively chained includes inside `Light.h` and `Mesh.h` | 🟠 Caveat | **Done** |
 | 11.4| No `Camera` node type in scene graph (cannot be serialized) | 🟠 Caveat | **Done** |
 | 11.5| HardcodedFullscreen on primary monitor with no windowed mode option | 🟡 Improvement | Left to fix |
-| 11.6| No material system (all assets use hardcoded Phong parameters) | 🟡 Improvement | Left to fix |
-| 11.7| `Model::physicsEnabled` is a dead/unused field | 🟡 Improvement | Left to fix |
-| 11.8| No undo/redo system in editor | 🟡 Improvement | Left to fix |
-| 11.9| No scene "dirty" flag to prevent redundant saves | 🟡 Improvement | Left to fix |
+| 11.6| No material system (all assets use hardcoded Phong parameters) | 🟡 Improvement | **Done** |
+| 11.7| `Model::physicsEnabled` is a dead/unused field | 🟡 Improvement | **Done** |
+| 11.8| No undo/redo system in editor | 🟡 Improvement | **Done** |
+| 11.9| No scene "dirty" flag to prevent redundant saves | 🟡 Improvement | **Done** |
 | 11.10| `Shader::checkCompileErrors` compares pointers on literal strings | 🟠 Caveat | Left to fix |

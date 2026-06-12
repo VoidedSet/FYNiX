@@ -121,6 +121,7 @@ void Mesh::Draw(Shader &shader)
     // bind textures, and will also update required shader uniforms.
     shader.use();
 
+    bool hasSpecularMap = false;
     for (unsigned int i = 0; i < textures.size(); i++)
     {
         textures[i].Bind(i);
@@ -132,12 +133,18 @@ void Mesh::Draw(Shader &shader)
         else if (textures[i].type == "texture_specular" && i < 16)
         {
             uniformName = specularUniformNames[i];
+            hasSpecularMap = true;
         }
         else
         {
             uniformName = textures[i].type + std::to_string(i);
         }
         textures[i].SetUniform(shader, uniformName, i);
+    }
+    int useSpec = hasSpecularMap ? 1 : 0;
+    if (shader.getUniformLocation("useSpecularMap") != -1)
+    {
+        shader.setUniforms("useSpecularMap", static_cast<unsigned int>(UniformType::Int), &useSpec);
     }
 
     VAO.Bind();

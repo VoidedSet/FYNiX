@@ -437,6 +437,13 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
         Model &model = pair.second;
         glm::mat4 modelMat = getWorldTransform(model.ID);
         shader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(modelMat));
+        
+        // Set material uniforms
+        shader.setUniforms("material.ambient", static_cast<unsigned int>(UniformType::Vec3f), glm::value_ptr(model.material.ambient));
+        shader.setUniforms("material.diffuse", static_cast<unsigned int>(UniformType::Vec3f), glm::value_ptr(model.material.diffuse));
+        shader.setUniforms("material.specular", static_cast<unsigned int>(UniformType::Vec3f), glm::value_ptr(model.material.specular));
+        shader.setUniforms("material.shininess", static_cast<unsigned int>(UniformType::Float), &model.material.shininess);
+
         model.Draw(shader);
     }
 }
@@ -616,16 +623,16 @@ btRigidBody *SceneManager::getRigidBodyByID(unsigned int ID)
     return nullptr;
 }
 
-void SceneManager::saveScene()
+json SceneManager::serializeScene()
 {
     if (!root)
     {
-        std::cerr << "[SceneManager] Cannot save scene: root is null." << std::endl;
-        return;
+        return json::object();
     }
 
     json outJson;
     outJson["projectName"] = projectName;
+    outJson["activeCameraID"] = activeCameraID;
 
     std::function<json(Node *)> buildNodeJson = [&](Node *node) -> json
     {
@@ -646,17 +653,17 @@ void SceneManager::saveScene()
                 {
                     j["modelPath"] = model.directory;
                 }
-                else
-                {
-                    std::cerr << "[SceneManager] Warning: Model with ID " << node->ID << " has empty directory." << std::endl;
-                }
                 j["position"] = {model.getPosition().x, model.getPosition().y, model.getPosition().z};
                 j["rotation"] = {model.getRotation().x, model.getRotation().y, model.getRotation().z};
                 j["scale"] = {model.getScale().x, model.getScale().y, model.getScale().z};
-            }
-            else
-            {
-                std::cerr << "[SceneManager] Warning: No model found for node ID " << node->ID << std::endl;
+                
+                // Save material data
+                j["material"] = {
+                    {"ambient", {model.material.ambient.x, model.material.ambient.y, model.material.ambient.z}},
+                    {"diffuse", {model.material.diffuse.x, model.material.diffuse.y, model.material.diffuse.z}},
+                    {"specular", {model.material.specular.x, model.material.specular.y, model.material.specular.z}},
+                    {"shininess", model.material.shininess}
+                };
             }
         }
 
@@ -671,10 +678,6 @@ void SceneManager::saveScene()
                 j["color"] = {light.color.x, light.color.y, light.color.z};
                 j["position"] = {light.position.x, light.position.y, light.position.z};
             }
-            else
-            {
-                std::cerr << "[SceneManager] Warning: No light found for node ID " << node->ID << std::endl;
-            }
         }
 
         else if (node->type == NodeType::Particles)
@@ -688,10 +691,6 @@ void SceneManager::saveScene()
                 j["position"] = {emitter.Position.x, emitter.Position.y, emitter.Position.z};
                 j["shaderName"] = emitter.shader ? emitter.shader->Name : "";
                 j["maxParticles"] = emitter.maxParticles;
-            }
-            else
-            {
-                std::cerr << "[SceneManager] Warning: No Particle Emitter found for node ID " << node->ID << std::endl;
             }
         }
         else if (node->type == NodeType::RigidBody)
@@ -711,10 +710,6 @@ void SceneManager::saveScene()
                     trans = body->getWorldTransform();
                     
                 j["position"] = {trans.getOrigin().getX(), trans.getOrigin().getY(), trans.getOrigin().getZ()};
-            }
-            else
-            {
-                std::cerr << "[SceneManager] Warning: No Rigid Body found for node ID " << node->ID << std::endl;
             }
         }
 
@@ -740,60 +735,15 @@ void SceneManager::saveScene()
     };
 
     outJson["scenegraph"] = buildNodeJson(root);
-
-    std::ofstream outFile(projectPath);
-    if (!outFile.is_open())
-    {
-        std::cerr << "[SceneManager] Failed to open file for writing: " << projectPath << std::endl;
-        return;
-    }
-
-    outFile << std::setw(2) << outJson << std::endl;
-
-    if (!outFile.good())
-    {
-        std::cerr << "[SceneManager] Error occurred while writing to file: " << projectPath << std::endl;
-    }
-    else
-    {
-        std::cout << "[SceneManager] Scene saved successfully to: " << projectPath << std::endl;
-    }
+    return outJson;
 }
 
-void SceneManager::LoadScene(const std::string &path)
+void SceneManager::deserializeScene(const nlohmann::json &data)
 {
-    std::cout << "[SceneManager] Loading scene from path: " << path << std::endl;
-
-    std::ifstream file(path);
-    if (!file.is_open())
-    {
-        std::cerr << "[SceneManager] Failed to open file: " << path << std::endl;
-        return;
-    }
-
-    json data;
-    try
-    {
-        file >> data;
-    }
-    catch (const std::exception &e)
-    {
-        std::cerr << "[SceneManager] Failed to parse JSON: " << e.what() << std::endl;
-        return;
-    }
-
-    if (!data.contains("scenegraph"))
-    {
-        std::cerr << "[SceneManager] Malformed .fynx file: missing 'scenegraph'" << std::endl;
-        return;
-    }
-
     projectName = data.value("projectName", "UnnamedProject");
+    activeCameraID = data.value("activeCameraID", 0u);
 
     // Cleanup
-    activeCameraID = 0;
-    cameraChangesPending = false;
-
     for (Node *node : nodes)
     {
         delete node;
@@ -814,7 +764,7 @@ void SceneManager::LoadScene(const std::string &path)
     
     nextID = 1;
 
-    std::function<void(json &, Node *)> buildNodeRecursive = [&](json &j, Node *parent)
+    std::function<void(const json &, Node *)> buildNodeRecursive = [&](const json &j, Node *parent)
     {
         unsigned int id = j["id"];
         std::string name = j["name"];
@@ -848,6 +798,20 @@ void SceneManager::LoadScene(const std::string &path)
                     model->setScale(scl);
                     newNode->scale = scl;
                 }
+                
+                // Load material data
+                if (j.contains("material"))
+                {
+                    auto &matJ = j["material"];
+                    if (matJ.contains("ambient"))
+                        model->material.ambient = glm::vec3(matJ["ambient"][0], matJ["ambient"][1], matJ["ambient"][2]);
+                    if (matJ.contains("diffuse"))
+                        model->material.diffuse = glm::vec3(matJ["diffuse"][0], matJ["diffuse"][1], matJ["diffuse"][2]);
+                    if (matJ.contains("specular"))
+                        model->material.specular = glm::vec3(matJ["specular"][0], matJ["specular"][1], matJ["specular"][2]);
+                    if (matJ.contains("shininess"))
+                        model->material.shininess = matJ["shininess"];
+                }
             }
         }
         else if (type == NodeType::Light)
@@ -874,14 +838,14 @@ void SceneManager::LoadScene(const std::string &path)
         else if (type == NodeType::Particles)
         {
             std::string shaderName;
-            unsigned int maxParticles = 0;
+            unsigned int maxParts = 0;
 
             if (j.contains("shaderName"))
                 shaderName = j["shaderName"];
             if (j.contains("maxParticles"))
-                maxParticles = j["maxParticles"];
+                maxParts = j["maxParticles"];
 
-            addToParent(name, type, parent->ID, shaderName, maxParticles, id);
+            addToParent(name, type, parent->ID, shaderName, maxParts, id);
 
             auto *emitter = getEmitterByID(id);
             Node *newNode = find_node(id);
@@ -965,7 +929,102 @@ void SceneManager::LoadScene(const std::string &path)
             buildNodeRecursive(childJson, root);
         }
     }
+}
 
+void SceneManager::pushUndoState()
+{
+    undoStack.push_back(serializeScene());
+    if (undoStack.size() > 50)
+    {
+        undoStack.erase(undoStack.begin());
+    }
+    redoStack.clear();
+    isDirty = true;
+}
+
+void SceneManager::undo()
+{
+    if (undoStack.empty())
+        return;
+
+    redoStack.push_back(serializeScene());
+    json previousState = undoStack.back();
+    undoStack.pop_back();
+
+    deserializeScene(previousState);
+    isDirty = true;
+}
+
+void SceneManager::redo()
+{
+    if (redoStack.empty())
+        return;
+
+    undoStack.push_back(serializeScene());
+    json nextState = redoStack.back();
+    redoStack.pop_back();
+
+    deserializeScene(nextState);
+    isDirty = true;
+}
+
+void SceneManager::saveScene()
+{
+    json outJson = serializeScene();
+
+    std::ofstream outFile(projectPath);
+    if (!outFile.is_open())
+    {
+        std::cerr << "[SceneManager] Failed to open file for writing: " << projectPath << std::endl;
+        return;
+    }
+
+    outFile << std::setw(2) << outJson << std::endl;
+
+    if (!outFile.good())
+    {
+        std::cerr << "[SceneManager] Error occurred while writing to file: " << projectPath << std::endl;
+    }
+    else
+    {
+        std::cout << "[SceneManager] Scene saved successfully to: " << projectPath << std::endl;
+        isDirty = false;
+    }
+}
+
+void SceneManager::LoadScene(const std::string &path)
+{
+    std::cout << "[SceneManager] Loading scene from path: " << path << std::endl;
+
+    std::ifstream file(path);
+    if (!file.is_open())
+    {
+        std::cerr << "[SceneManager] Failed to open file: " << path << std::endl;
+        return;
+    }
+
+    json data;
+    try
+    {
+        file >> data;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "[SceneManager] Failed to parse JSON: " << e.what() << std::endl;
+        return;
+    }
+
+    if (!data.contains("scenegraph"))
+    {
+        std::cerr << "[SceneManager] Malformed .fynx file: missing 'scenegraph'" << std::endl;
+        return;
+    }
+
+    deserializeScene(data);
+    
+    isDirty = false;
+    undoStack.clear();
+    redoStack.clear();
     std::cout << "[SceneManager] Scene loaded successfully." << std::endl;
 }
 

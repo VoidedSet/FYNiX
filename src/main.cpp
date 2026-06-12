@@ -198,6 +198,15 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+
+        static bool lastDirtyState = false;
+        if (scene.isDirty != lastDirtyState)
+        {
+            std::string title = projectName + (scene.isDirty ? " *" : "");
+            glfwSetWindowTitle(window, title.c_str());
+            lastDirtyState = scene.isDirty;
+        }
+
         // ==== DELTA TIME ====
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -260,6 +269,20 @@ int main()
             else
             {
                 // Active camera node was deleted or invalid, fall back to Viewport Camera
+                if (globalCamera)
+                {
+                    globalCamera->camPos = scene.viewportCamPos;
+                    globalCamera->yaw = scene.viewportYaw;
+                    globalCamera->pitch = scene.viewportPitch;
+                    globalCamera->camUp = glm::vec3(0.0f, 1.0f, 0.0f);
+                    
+                    glm::vec3 direction;
+                    direction.x = cos(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                    direction.y = sin(glm::radians(globalCamera->pitch));
+                    direction.z = sin(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                    globalCamera->camTarget = glm::normalize(direction);
+                    *globalCamera->view = glm::lookAt(globalCamera->camPos, globalCamera->camPos + globalCamera->camTarget, globalCamera->camUp);
+                }
                 scene.activeCameraID = 0;
                 scene.cameraChangesPending = false;
             }

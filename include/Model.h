@@ -35,11 +35,19 @@ struct Skeleton
 class Model
 {
 public:
+    struct ModelMaterial
+    {
+        glm::vec3 ambient = glm::vec3(0.1f);
+        glm::vec3 diffuse = glm::vec3(1.0f);
+        glm::vec3 specular = glm::vec3(0.5f);
+        float shininess = 32.0f;
+    };
+
     unsigned int ID;
     std::string directory;
     glm::mat4 globalInverseTransform;
     bool hasAnimation = false;
-    bool physicsEnabled = false;
+    ModelMaterial material;
 
     Model(const std::string &path, unsigned int ID, bool uploadToGPU = true);
 
