@@ -231,6 +231,24 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                 scene->drawPhysics = drawPhysics;
             if (ImGui::Checkbox("Simulate Physics", &simulatePhysics))
                 scene->simulate = simulatePhysics;
+
+            bool groundEnabled = scene->infiniteFloor;
+            if (ImGui::Checkbox("Infinite Floor", &groundEnabled))
+            {
+                scene->infiniteFloor = groundEnabled;
+                if (scene->physics)
+                {
+                    scene->physics->setGroundPlaneEnabled(groundEnabled);
+                }
+            }
+
+            static float physicsGravity = 10.0f;
+            if (ImGui::DragFloat("Gravity", &physicsGravity, 0.1f, -100.0f, 100.0f, "%.2f"))
+            {
+                if (scene->physics)
+                    scene->physics->setGravity(physicsGravity);
+            }
+
             if (!simulatePhysics)
             {
                 ImGui::SameLine();
@@ -595,6 +613,15 @@ namespace
         {
             body->getCollisionShape()->setLocalScaling(btVector3(scale.x, scale.y, scale.z));
             scene->physics->getDynamicsWorld()->updateSingleAabb(body);
+
+            // Recompute local inertia and update mass props
+            float mass = (body->getInvMass() == 0.0f) ? 0.0f : 1.0f / body->getInvMass();
+            btVector3 localInertia(0, 0, 0);
+            if (mass > 0.0f)
+                body->getCollisionShape()->calculateLocalInertia(mass, localInertia);
+            body->setMassProps(mass, localInertia);
+            body->updateInertiaTensor();
+
             rigidBodyNode->scale = scale;
         }
 

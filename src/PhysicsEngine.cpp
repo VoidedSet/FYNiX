@@ -113,11 +113,16 @@ PhysicsEngine::PhysicsEngine()
 
     m_dynamicsWorld->setGravity(btVector3(0, -10, 0));
 
+    m_groundBody = nullptr;
+    setGroundPlaneEnabled(true);
+
     std::cout << "[Physics] Physics Engine Initialized" << std::endl;
 }
 
 PhysicsEngine::~PhysicsEngine()
 {
+    setGroundPlaneEnabled(false);
+
     for (int i = m_dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
     {
         btCollisionObject *obj = m_dynamicsWorld->getCollisionObjectArray()[i];
@@ -152,7 +157,8 @@ void PhysicsEngine::update(float deltaTime)
     // timeStep: The amount of time to simulate, in seconds.
     // maxSubSteps: To ensure simulation accuracy, Bullet can perform smaller internal steps.
     // 10 is a good default value.
-    m_dynamicsWorld->stepSimulation(deltaTime, 10);
+    float clampedDelta = std::min(deltaTime, 0.1f);
+    m_dynamicsWorld->stepSimulation(clampedDelta, 10);
 }
 
 void PhysicsEngine::Draw(Shader &shader)
@@ -179,6 +185,10 @@ void PhysicsEngine::Draw(Shader &shader)
                 btBoxShape *boxShape = static_cast<btBoxShape *>(shape);
                 btVector3 halfExtents = boxShape->getHalfExtentsWithMargin();
                 scale = glm::vec3(halfExtents.x() * 2.0f, halfExtents.y() * 2.0f, halfExtents.z() * 2.0f);
+            }
+            else if (shape->getShapeType() == STATIC_PLANE_PROXYTYPE)
+            {
+                scale = glm::vec3(100.0f, 0.01f, 100.0f);
             }
 
             glm::mat4 modelMatrix;
@@ -254,4 +264,47 @@ void PhysicsEngine::deleteRigidBody(btRigidBody *body)
     delete body;
 
     std::cout << "[Physics] Deleted a Rigid Body!" << std::endl;
+}
+
+void PhysicsEngine::setGroundPlaneEnabled(bool enabled)
+{
+    if (enabled)
+    {
+        if (!m_groundBody)
+        {
+            btCollisionShape *groundShape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+            m_collisionShapes.push_back(groundShape);
+
+            btTransform groundTransform;
+            groundTransform.setIdentity();
+            groundTransform.setOrigin(btVector3(0.0f, 0.0f, 0.0f));
+
+            btDefaultMotionState *myMotionState = new btDefaultMotionState(groundTransform);
+            btRigidBody::btRigidBodyConstructionInfo rbInfo(0.0f, myMotionState, groundShape, btVector3(0.0f, 0.0f, 0.0f));
+            m_groundBody = new btRigidBody(rbInfo);
+
+            m_dynamicsWorld->addRigidBody(m_groundBody);
+            std::cout << "[Physics] Infinite ground plane enabled." << std::endl;
+        }
+    }
+    else
+    {
+        if (m_groundBody)
+        {
+            m_dynamicsWorld->removeRigidBody(m_groundBody);
+            if (m_groundBody->getMotionState())
+            {
+                delete m_groundBody->getMotionState();
+            }
+            btCollisionShape *shape = m_groundBody->getCollisionShape();
+            if (shape)
+            {
+                m_collisionShapes.erase(std::remove(m_collisionShapes.begin(), m_collisionShapes.end(), shape), m_collisionShapes.end());
+                delete shape;
+            }
+            delete m_groundBody;
+            m_groundBody = nullptr;
+            std::cout << "[Physics] Infinite ground plane disabled." << std::endl;
+        }
+    }
 }

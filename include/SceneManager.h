@@ -62,6 +62,7 @@ public:
 
     bool drawLights = true,
          drawPhysics = true,
+         infiniteFloor = true,
          simulate = false;
 
     std::string nodeTypeToString(NodeType type);
@@ -114,6 +115,7 @@ public:
     void ResetPhysics();
     void SyncTransforms();
 
+    unsigned int findNextAvailableID();
     Node *find_node(unsigned int ID);
     glm::mat4 getWorldTransform(unsigned int ID);
 

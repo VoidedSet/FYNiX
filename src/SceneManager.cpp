@@ -73,7 +73,7 @@ SceneManager::~SceneManager()
 
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, unsigned int forcedID)
 {
-    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : findNextAvailableID();
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -100,7 +100,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 
 void SceneManager::addToParent(std::string &name, std::string &filepath, NodeType type, unsigned int parentID, unsigned int forcedID)
 {
-    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : findNextAvailableID();
 
     Node *parentNode = find_node(parentID);
     if (!parentNode)
@@ -129,7 +129,7 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
 
 void SceneManager::addToParentAsync(std::string &name, std::string &filepath, NodeType type, unsigned int parentID)
 {
-    unsigned int assignedID = nextID;
+    unsigned int assignedID = findNextAvailableID();
 
     Node *parentNode = find_node(parentID);
     if (!parentNode)
@@ -137,7 +137,8 @@ void SceneManager::addToParentAsync(std::string &name, std::string &filepath, No
         std::cerr << "[SceneManager] Error: Parent node with ID " << parentID << " not found." << std::endl;
         return;
     }
-    nextID = assignedID + 1;
+    if (assignedID >= nextID)
+        nextID = assignedID + 1;
     Node *newNode = new Node({assignedID, name, type, parentNode, {}});
     nodes.push_back(newNode);
     nodeMap[newNode->ID] = newNode;
@@ -192,7 +193,7 @@ void SceneManager::UpdateAsyncLoads()
 
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, std::string &shaderName, unsigned int maxParticles, unsigned int forcedID)
 {
-    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : findNextAvailableID();
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -222,7 +223,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, RigidBodyShape shape, float mass, unsigned int forcedID)
 {
-    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : findNextAvailableID();
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -238,6 +239,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
             std::cerr << "[Physics] Failed to init Physics Engine." << std::endl;
             return;
         }
+        physics->setGroundPlaneEnabled(infiniteFloor);
     }
 
     if (assignedID >= nextID)
@@ -262,7 +264,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
 
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, unsigned int forcedID)
 {
-    unsigned int assignedID = (forcedID != 0) ? forcedID : nextID;
+    unsigned int assignedID = (forcedID != 0) ? forcedID : findNextAvailableID();
     Node *parentNode = find_node(parentID);
     if (!parentNode)
     {
@@ -878,6 +880,16 @@ void SceneManager::LoadScene(const std::string &path)
     std::cout << "[SceneManager] Scene loaded successfully." << std::endl;
 }
 
+unsigned int SceneManager::findNextAvailableID()
+{
+    unsigned int id = 1;
+    while (nodeMap.find(id) != nodeMap.end())
+    {
+        id++;
+    }
+    return id;
+}
+
 Node *SceneManager::find_node(unsigned int id)
 {
     auto it = nodeMap.find(id);
@@ -1049,6 +1061,14 @@ void SceneManager::SyncTransforms()
 
                 body->getCollisionShape()->setLocalScaling(btVector3(worldScale.x, worldScale.y, worldScale.z));
                 physics->getDynamicsWorld()->updateSingleAabb(body);
+
+                // Recompute local inertia and update mass props
+                float mass = (body->getInvMass() == 0.0f) ? 0.0f : 1.0f / body->getInvMass();
+                btVector3 localInertia(0, 0, 0);
+                if (mass > 0.0f)
+                    body->getCollisionShape()->calculateLocalInertia(mass, localInertia);
+                body->setMassProps(mass, localInertia);
+                body->updateInertiaTensor();
                 
                 // Keep initial transforms up to date for reset
                 initialTransforms[n->ID] = trans;
