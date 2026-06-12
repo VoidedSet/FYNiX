@@ -173,7 +173,7 @@ int main()
 
     glm::mat4 model = glm::mat4(0.f);
     glm::mat4 projection = glm::mat4(0.f);
-    projection = glm::perspective(glm::radians(45.f), (float)(windowManager.mode->width / windowManager.mode->height), 0.1f, 100.f);
+    projection = glm::perspective(glm::radians(45.f), (float)windowManager.mode->width / (float)windowManager.mode->height, 0.1f, 100.f);
 
     defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
     defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));

@@ -9,6 +9,7 @@ layout (location = 4) in vec4 boneWeights;
 uniform mat4 projection;
 uniform mat4 view;
 uniform mat4 model;
+uniform mat3 normalMatrix;
 uniform mat4 bone_transforms[200];
 uniform bool isAnimated;
 
@@ -33,6 +34,6 @@ vec4 skinnedPos = skinningTransform * vec4(aPos, 1.0);
 
 gl_Position = projection * view * model * skinnedPos;
 FragPos = vec3(model * skinnedPos);
-Normal = mat3(transpose(inverse(model))) * mat3(skinningTransform) * aNormal;
+Normal = normalMatrix * mat3(skinningTransform) * aNormal;
 TexCoord = aTexCoord;
 }

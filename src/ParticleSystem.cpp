@@ -133,9 +133,11 @@ void ParticleEmitter::Draw()
         // Enable blending for transparent particles
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE); // Additive blending for fire/smoke
+        glDepthMask(GL_FALSE);
 
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, activeParticles);
 
+        glDepthMask(GL_TRUE);
         glBindVertexArray(0);
         glDisable(GL_BLEND);
     }

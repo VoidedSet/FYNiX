@@ -1,5 +1,5 @@
 {
-  "activeCameraID": 6,
+  "activeCameraID": 0,
   "projectName": "",
   "scenegraph": {
     "children": [
@@ -45,22 +45,6 @@
       {
         "children": [
           {
-            "color": [
-              1.0,
-              1.0,
-              1.0
-            ],
-            "id": 21,
-            "lightType": "Directional",
-            "name": "sunLight",
-            "position": [
-              2.382207389352189e-44,
-              3.363116314379561e-44,
-              0.0
-            ],
-            "type": "Light"
-          },
-          {
             "id": 6,
             "name": "mainCamera",
             "position": [
@@ -91,6 +75,22 @@
         ],
         "shape": "CUBE",
         "type": "RigidBody"
+      },
+      {
+        "color": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "id": 1,
+        "lightType": "Directional",
+        "name": "NewNode",
+        "position": [
+          -3.200000047683716,
+          3.799999952316284,
+          3.299999952316284
+        ],
+        "type": "Light"
       }
     ],
     "id": 0,

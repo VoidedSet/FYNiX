@@ -27,6 +27,24 @@ namespace
         return names;
     }();
 
+    const std::vector<std::string> lightTypeUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 64; ++i)
+        {
+            names.push_back("lightTypes[" + std::to_string(i) + "]");
+        }
+        return names;
+    }();
+
+    const std::vector<std::string> lightDirUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 64; ++i)
+        {
+            names.push_back("lightDirections[" + std::to_string(i) + "]");
+        }
+        return names;
+    }();
+
     glm::vec3 extractXYZ(const glm::mat3& R) {
         float ey = asin(glm::clamp(R[2][0], -1.0f, 1.0f));
         float ex, ez;
@@ -440,21 +458,29 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
     SyncTransforms();
 
     // 2. Set Light Uniforms (using synced transforms)
-    int lightCount = lights.size();
+    int lightCount = std::min((int)lights.size(), 16);
     shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
 
     int idx = 0;
     for (auto &pair : lights)
     {
+        if (idx >= 16) break;
         Light &light = pair.second;
         const std::string &posName = (idx < 64) ? lightPosUniformNames[idx] : ("lightPositions[" + std::to_string(idx) + "]");
         const std::string &colName = (idx < 64) ? lightColUniformNames[idx] : ("lightColors[" + std::to_string(idx) + "]");
+        const std::string &typeName = (idx < 64) ? lightTypeUniformNames[idx] : ("lightTypes[" + std::to_string(idx) + "]");
+        const std::string &dirName = (idx < 64) ? lightDirUniformNames[idx] : ("lightDirections[" + std::to_string(idx) + "]");
 
         glm::mat4 worldMat = getWorldTransform(light.ID);
         glm::vec3 worldPos = glm::vec3(worldMat[3]);
+        glm::vec3 worldDir = -glm::normalize(glm::vec3(worldMat[2]));
+
+        int typeVal = static_cast<int>(light.type);
 
         shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldPos)));
         shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(light.color)));
+        shader.setUniforms(typeName.c_str(), (unsigned int)UniformType::Int, &typeVal);
+        shader.setUniforms(dirName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldDir)));
         idx++;
     }
 
@@ -463,6 +489,10 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
         Model &model = pair.second;
         glm::mat4 modelMat = getWorldTransform(model.ID);
         shader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(modelMat));
+
+        // Precompute normal matrix on CPU and upload as uniform
+        glm::mat3 normalMat = glm::transpose(glm::inverse(glm::mat3(modelMat)));
+        shader.setUniforms("normalMatrix", (unsigned int)UniformType::Mat3f, glm::value_ptr(normalMat));
         
         // Set material uniforms
         shader.setUniforms("material.ambient", static_cast<unsigned int>(UniformType::Vec3f), glm::value_ptr(model.material.ambient));

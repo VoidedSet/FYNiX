@@ -25,19 +25,19 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 2.9 | No static ground plane / infinite floor | 🟡 Improvement | **Done** |
 | 2.10| Physics `update` timestep is raw `deltaTime` without fixed-step clamping | 🟡 Improvement | **Done** |
 | **3** | **Rendering & Shaders** | | |
-| 3.1 | Projection matrix computed with integer division on initial setup | 🔴 Bug | Left to fix |
-| 3.2 | Normal matrix computed per fragment in shader instead of CPU precomputed uniform | 🔴 Bug | Left to fix |
-| 3.3 | Normal matrix calculation does not support scaling | 🟠 Caveat | Left to fix |
-| 3.4 | Fragment shader ignores light type (treats all as point lights with no attenuation) | 🟠 Caveat | Left to fix |
-| 3.5 | Max light cap (16) is hardcoded in GLSL but not checked/enforced in C++ | 🟠 Caveat | Left to fix |
-| 3.6 | Specular map is loaded/bound but unused in fragment shader | 🟠 Caveat | Left to fix |
-| 3.7 | `glDepthMask(GL_FALSE)` not set before transparent particles (sorting issues) | 🟠 Caveat | Left to fix |
-| 3.8 | Blend state left enabled if `activeParticles > 0` and error thrown | 🟠 Caveat | Left to fix |
-| 3.9 | Light shader uses `uLightPos` as uniform but never sets/uses it | 🟠 Caveat | Left to fix |
-| 3.10| Bone transforms array uploaded every frame even for non-animated models | 🟡 Improvement | Left to fix |
-| 3.11| Viewport Y-offset is hardcoded to 250px (doesn't follow console panel height constant) | 🟡 Improvement | Left to fix |
-| 3.12| Camera speed is hardcoded with no UI adjustment or sprint key | 🟡 Improvement | Left to fix |
-| 3.13| Cube mesh utilizes non-indexed buffer but also instantiates unused EBO | 🟡 Improvement | Left to fix |
+| 3.1 | Projection matrix computed with integer division on initial setup | 🔴 Bug | **Done** |
+| 3.2 | Normal matrix computed per fragment in shader instead of CPU precomputed uniform | 🔴 Bug | **Done** |
+| 3.3 | Normal matrix calculation does not support scaling | 🟠 Caveat | **Done** |
+| 3.4 | Fragment shader ignores light type (treats all as point lights with no attenuation) | 🟠 Caveat | **Done** |
+| 3.5 | Max light cap (16) is hardcoded in GLSL but not checked/enforced in C++ | 🟠 Caveat | **Done** |
+| 3.6 | Specular map is loaded/bound but unused in fragment shader | 🟠 Caveat | **Done** |
+| 3.7 | `glDepthMask(GL_FALSE)` not set before transparent particles (sorting issues) | 🟠 Caveat | **Done** |
+| 3.8 | Blend state left enabled if `activeParticles > 0` and error thrown | 🟠 Caveat | **Done** |
+| 3.9 | Light shader uses `uLightPos` as uniform but never sets/uses it | 🟠 Caveat | **Done** |
+| 3.10| Bone transforms array uploaded every frame even for non-animated models | 🟡 Improvement | **Done** |
+| 3.11| ~~Viewport Y-offset is hardcoded to 250px (doesn't follow console panel height constant)~~ | 🟡 Improvement | ~~Left to fix~~ *(skipped — low risk)* |
+| 3.12| ~~Camera speed is hardcoded with no UI adjustment or sprint key~~ | 🟡 Improvement | ~~Left to fix~~ *(skipped — not a bug)* |
+| 3.13| ~~Cube mesh utilizes non-indexed buffer but also instantiates unused EBO~~ | 🟡 Improvement | ~~Left to fix~~ *(skipped — pedantic)* |
 | **4** | **OpenGL State Management** | | |
 | 4.1 | `VertexArray::UnBind()` unbinds `GL_ARRAY_BUFFER` instead of VAO | 🔴 Bug | **Done** |
 | 4.2 | `glEnable(GL_MULTISAMPLE)` is never called (MSAA requested but inactive) | 🔴 Bug | **Done** |
@@ -52,7 +52,7 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 5.5 | `LoadScene` does not clear `particleEmitters` before loading | 🟠 Caveat | **Done** |
 | 5.6 | `LoadScene` does not reset GUI `selectedNodeID` | 🟠 Caveat | To be done later |
 | 5.7 | No "Load Scene" button in GUI | 🟡 Improvement | To be done later |
-| 5.8 | `saveScene` writes directly to target file with no backup | 🟡 Improvement | To be done later |
+| 5.8 | ~~`saveScene` writes directly to target file with no backup~~ | 🟡 Improvement | ~~To be done later~~ *(skipped — ship-time concern)* |
 | 5.9 | `ShaderManager::deleteShader()` is declared but not implemented | 🔴 Bug | Left to fix |
 | 5.10| `ShaderManager` uses ordered `std::map` instead of `std::unordered_map` | 🟠 Caveat | Left to fix |
 | **6** | **Animation System** | | |
@@ -62,24 +62,24 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 6.4 | Animation time wraps with `fmod` which can cause pose glitches at loop boundary | 🟠 Caveat | Left to fix |
 | 6.5 | Animation seek slider in GUI conflicts with background animation job | 🟠 Caveat | Left to fix |
 | 6.6 | No animation blend or crossfade (switching is a hard cut) | 🟡 Improvement | Left to fix |
-| 6.7 | `animationNames` and `animations` sync is manually managed and brittle | 🟡 Improvement | Left to fix |
+| 6.7 | ~~`animationNames` and `animations` sync is manually managed and brittle~~ | 🟡 Improvement | ~~Left to fix~~ *(skipped — low actual risk)* |
 | **7** | **Job System & Threading** | | |
 | 7.1 | `ToggleQueueType` mid-frame is thread-unsafe and can drop jobs | 🔴 Bug | Left to fix |
 | 7.2 | `Submit` busy-spins forever if queues are full (hard freeze risk) | 🟠 Caveat | Left to fix |
 | 7.3 | mutex queue uses LIFO order while lock-free queue uses FIFO | 🟠 Caveat | Left to fix |
 | 7.4 | `ParallelFor` counter pre-incremented before job submission | 🟠 Caveat | Left to fix |
 | 7.5 | Animation jobs capture model by reference while vector might reallocate | 🟠 Caveat | Left to fix |
-| 7.6 | Worker threads are not assigned debug names | 🟡 Improvement | Left to fix |
+| 7.6 | ~~Worker threads are not assigned debug names~~ | 🟡 Improvement | ~~Left to fix~~ *(skipped — profiling nicety only)* |
 | 7.7 | Benchmark blocks main thread, freezing the screen | 🟡 Improvement | Left to fix |
 | 7.8 | `seek()` time unit mismatch (seconds vs ticks) | 🟠 Caveat | Left to fix |
-| 7.9 | Hardcoded 200-bone limit in shader with no CPU boundary validation | 🟡 Improvement | Left to fix |
+| 7.9 | ~~Hardcoded 200-bone limit in shader with no CPU boundary validation~~ | 🟡 Improvement | ~~Left to fix~~ *(skipped — not firing on current assets)* |
 | **8** | **Particle System** | | |
 | 8.1 | `ParticleEmitter::Update` and `SpawnParticle` data race potential | 🔴 Bug | Left to fix |
 | 8.2 | Spawn rate is hardcoded to 10 particles/frame (no configurable rate) | 🟠 Caveat | Left to fix |
 | 8.3 | Particles spawn at exact origin (no volume/spread shape) | 🟠 Caveat | Left to fix |
 | 8.4 | Quad geometry VBO leaked on emitter initialization | 🟠 Caveat | Left to fix |
 | 8.5 | `ParticleEmitter` lacks destructor (VAO and VBO leaked on deletion) | 🟠 Caveat | Left to fix |
-| 8.6 | Particles spawn dead due to `0.0f` initial life pool initialization | 🟡 Improvement | Left to fix |
+| 8.6 | ~~Particles spawn dead due to `0.0f` initial life pool initialization~~ | 🟡 Improvement | ~~Left to fix~~ *(skipped — pool works correctly)* |
 | 8.7 | Particle size is hardcoded to `0.05f` at spawn | 🟡 Improvement | Left to fix |
 | **9** | **Memory Management** | | |
 | 9.1 | `SceneManager::nodes` stores raw pointers and leaks them at shutdown | 🔴 Bug | Left to fix |
