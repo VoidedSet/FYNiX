@@ -2,6 +2,18 @@
 #include "Mesh.h"
 #include <glm/gtx/string_cast.hpp>
 
+namespace
+{
+    const std::vector<std::string> boneUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 200; ++i)
+        {
+            names.push_back("bone_transforms[" + std::to_string(i) + "]");
+        }
+        return names;
+    }();
+}
+
 Model::Model(const std::string &path, unsigned int ID, bool uploadToGPU) : ID(ID), directory(path)
 {
     if (loadModel(path, uploadToGPU))
@@ -50,7 +62,7 @@ void Model::Draw(Shader &shader)
     {
         for (int i = 0; i < finalBoneMatrices.size(); i++)
         {
-            std::string uniformName = "bone_transforms[" + std::to_string(i) + "]";
+            const std::string &uniformName = boneUniformNames[i];
             shader.setUniforms(uniformName.c_str(), (unsigned int)UniformType::Mat4f, (void *)(glm::value_ptr(finalBoneMatrices[i])));
         }
     }

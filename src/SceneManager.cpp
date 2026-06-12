@@ -1,6 +1,31 @@
 #include "SceneManager.h"
 #include "JobSystem.h"
+#include <chrono>
+#include <vector>
 #include <glm/gtc/type_ptr.hpp>
+
+using namespace std;
+
+namespace
+{
+    const std::vector<std::string> lightPosUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 64; ++i)
+        {
+            names.push_back("lightPositions[" + std::to_string(i) + "]");
+        }
+        return names;
+    }();
+
+    const std::vector<std::string> lightColUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 64; ++i)
+        {
+            names.push_back("lightColors[" + std::to_string(i) + "]");
+        }
+        return names;
+    }();
+}
 
 using json = nlohmann::json;
 
@@ -350,8 +375,8 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
 
     for (int i = 0; i < lightCount; ++i)
     {
-        std::string posName = "lightPositions[" + std::to_string(i) + "]";
-        std::string colName = "lightColors[" + std::to_string(i) + "]";
+        const std::string &posName = (i < 64) ? lightPosUniformNames[i] : ("lightPositions[" + std::to_string(i) + "]");
+        const std::string &colName = (i < 64) ? lightColUniformNames[i] : ("lightColors[" + std::to_string(i) + "]");
 
         glm::mat4 worldMat = getWorldTransform(lights[i].ID);
         glm::vec3 worldPos = glm::vec3(worldMat[3]);

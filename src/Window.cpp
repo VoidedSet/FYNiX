@@ -35,6 +35,8 @@ Window::Window(const char *title)
         return;
     }
 
+    glEnable(GL_MULTISAMPLE);
+
     Window::setViewport();
 }
 

@@ -1,5 +1,26 @@
 #include "Mesh.h"
 
+namespace
+{
+    const std::vector<std::string> diffuseUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 16; ++i)
+        {
+            names.push_back("texture_diffuse" + std::to_string(i));
+        }
+        return names;
+    }();
+
+    const std::vector<std::string> specularUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 16; ++i)
+        {
+            names.push_back("texture_specular" + std::to_string(i));
+        }
+        return names;
+    }();
+}
+
 float cubeVert[] = {
     -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
     0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
@@ -98,7 +119,20 @@ void Mesh::Draw(Shader &shader)
     for (unsigned int i = 0; i < textures.size(); i++)
     {
         textures[i].Bind(i);
-        textures[i].SetUniform(shader, textures[i].type + std::to_string(i));
+        std::string uniformName;
+        if (textures[i].type == "texture_diffuse" && i < 16)
+        {
+            uniformName = diffuseUniformNames[i];
+        }
+        else if (textures[i].type == "texture_specular" && i < 16)
+        {
+            uniformName = specularUniformNames[i];
+        }
+        else
+        {
+            uniformName = textures[i].type + std::to_string(i);
+        }
+        textures[i].SetUniform(shader, uniformName, i);
     }
 
     VAO.Bind();

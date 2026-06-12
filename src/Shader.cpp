@@ -125,7 +125,7 @@ void Shader::use()
 
 void Shader::setUniforms(const char *uName, unsigned int type, void *value)
 {
-    int location = glGetUniformLocation(ID, uName);
+    int location = getUniformLocation(uName);
     if (location == -1)
     {
         cerr << "[Shader - ERROR] Uniform '" << uName << "' not found." << endl;
@@ -174,4 +174,17 @@ void Shader::setUniforms(const char *uName, unsigned int type, void *value)
         cerr << "[Shader - ERROR]: Unknown uniform type.\n";
         break;
     }
+}
+
+int Shader::getUniformLocation(const std::string &name)
+{
+    auto it = uniformLocations.find(name);
+    if (it != uniformLocations.end())
+    {
+        return it->second;
+    }
+
+    int location = glGetUniformLocation(ID, name.c_str());
+    uniformLocations[name] = location;
+    return location;
 }
