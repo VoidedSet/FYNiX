@@ -1,4 +1,7 @@
 #include "Light.h"
+#include <iostream>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 Light::Light(unsigned int id, LightType type)
     : ID(id), type(type), lightMesh(Mesh(MeshType::CUBE))

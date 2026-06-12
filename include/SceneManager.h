@@ -25,7 +25,8 @@ enum class NodeType
     Light,
     Particles,
     RigidBody,
-    Empty
+    Empty,
+    Camera
 };
 
 struct Node
@@ -51,9 +52,9 @@ public:
     Node *root = nullptr;
     std::vector<Node *> nodes;
     std::unordered_map<unsigned int, Node *> nodeMap;
-    std::vector<Model> models;
-    std::vector<Light> lights;
-    std::vector<ParticleEmitter> particleEmitters;
+    std::unordered_map<unsigned int, Model> models;
+    std::unordered_map<unsigned int, Light> lights;
+    std::unordered_map<unsigned int, ParticleEmitter> particleEmitters;
     std::unordered_map<unsigned int, btRigidBody *> rigidBodies;
 
     ShaderManager *sm = nullptr;
@@ -64,6 +65,16 @@ public:
          drawPhysics = true,
          infiniteFloor = true,
          simulate = false;
+
+    unsigned int activeCameraID = 0; // 0 = Viewport Camera, otherwise Node ID of NodeType::Camera
+    bool cameraChangesPending = false;
+    glm::vec3 pendingCamPos = glm::vec3(0.0f);
+    float pendingCamYaw = -90.0f;
+    float pendingCamPitch = 0.0f;
+
+    glm::vec3 viewportCamPos = glm::vec3(0.0f, 0.0f, 3.0f);
+    float viewportYaw = -90.0f;
+    float viewportPitch = 0.0f;
 
     std::string nodeTypeToString(NodeType type);
     NodeType stringToNodeType(const std::string &str);
@@ -97,6 +108,7 @@ public:
     Light *getLightByID(unsigned int ID);
     ParticleEmitter *getEmitterByID(unsigned int ID);
     btRigidBody *getRigidBodyByID(unsigned int ID);
+    Node *getCameraNode();
 
     struct PendingModelLoad
     {

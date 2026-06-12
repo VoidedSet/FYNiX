@@ -164,6 +164,26 @@
               0.20000000298023224
             ],
             "type": "Model"
+          },
+          {
+            "id": 6,
+            "name": "mainCamera",
+            "position": [
+              0.0,
+              0.0,
+              2.299999952316284
+            ],
+            "rotation": [
+              0.24958208203315735,
+              0.02617993950843811,
+              0.0
+            ],
+            "scale": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "type": "Camera"
           }
         ],
         "id": 20,
@@ -176,22 +196,25 @@
         ],
         "shape": "CUBE",
         "type": "RigidBody"
-      },
-      {
-        "id": 23,
-        "mass": 0.0,
-        "name": "NewNode",
-        "position": [
-          0.0,
-          0.0,
-          0.0
-        ],
-        "shape": "CUBE",
-        "type": "RigidBody"
       }
     ],
     "id": 0,
     "name": "Root",
+    "position": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "rotation": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "scale": [
+      1.0,
+      1.0,
+      1.0
+    ],
     "type": "Root"
   }
 }

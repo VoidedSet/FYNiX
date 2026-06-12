@@ -1,6 +1,9 @@
 #include "GUI.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "JobSystem.h"
+#include "Camera.h"
+
+extern Camera *globalCamera;
 
 #include <windows.h>
 #include <psapi.h>
@@ -225,6 +228,82 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                 scene->saveScene(); // Fill remaining space
 
             ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Camera View");
+            
+            const char* currentCamLabel = "Viewport Camera";
+            if (scene->activeCameraID != 0)
+            {
+                Node* camNode = scene->find_node(scene->activeCameraID);
+                if (camNode)
+                    currentCamLabel = camNode->name.c_str();
+            }
+
+            if (ImGui::BeginCombo("Active Camera", currentCamLabel))
+            {
+                bool isSelected = (scene->activeCameraID == 0);
+                if (ImGui::Selectable("Viewport Camera", isSelected))
+                {
+                    if (scene->activeCameraID != 0)
+                    {
+                        if (globalCamera)
+                        {
+                            scene->cameraChangesPending = false;
+                            globalCamera->camPos = scene->viewportCamPos;
+                            globalCamera->yaw = scene->viewportYaw;
+                            globalCamera->pitch = scene->viewportPitch;
+                            
+                            glm::vec3 direction;
+                            direction.x = cos(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                            direction.y = sin(glm::radians(globalCamera->pitch));
+                            direction.z = sin(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                            globalCamera->camTarget = glm::normalize(direction);
+                            *globalCamera->view = glm::lookAt(globalCamera->camPos, globalCamera->camPos + globalCamera->camTarget, globalCamera->camUp);
+                        }
+                        scene->activeCameraID = 0;
+                    }
+                }
+
+                for (Node *n : scene->nodes)
+                {
+                    if (n->type == NodeType::Camera)
+                    {
+                        bool isSel = (scene->activeCameraID == n->ID);
+                        if (ImGui::Selectable(n->name.c_str(), isSel))
+                        {
+                            if (scene->activeCameraID != n->ID)
+                            {
+                                if (globalCamera)
+                                {
+                                    if (scene->activeCameraID == 0)
+                                    {
+                                        scene->viewportCamPos = globalCamera->camPos;
+                                        scene->viewportYaw = globalCamera->yaw;
+                                        scene->viewportPitch = globalCamera->pitch;
+                                    }
+                                    
+                                    scene->cameraChangesPending = false;
+                                    
+                                    glm::mat4 cameraWorldMat = scene->getWorldTransform(n->ID);
+                                    globalCamera->camPos = glm::vec3(cameraWorldMat[3]);
+                                    globalCamera->camTarget = -glm::normalize(glm::vec3(cameraWorldMat[2]));
+                                    globalCamera->camUp = glm::normalize(glm::vec3(cameraWorldMat[1]));
+
+                                    globalCamera->pitch = glm::degrees(asin(globalCamera->camTarget.y));
+                                    globalCamera->yaw = glm::degrees(atan2(globalCamera->camTarget.z, globalCamera->camTarget.x));
+
+                                    *globalCamera->view = glm::lookAt(globalCamera->camPos, globalCamera->camPos + globalCamera->camTarget, globalCamera->camUp);
+                                }
+                                scene->activeCameraID = n->ID;
+                            }
+                        }
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::Separator();
+            ImGui::Spacing();
+
             if (ImGui::Checkbox("Draw Light Gizmos", &drawLights))
                 scene->drawLights = drawLights;
             if (ImGui::Checkbox("Draw Physics Debug", &drawPhysics))
@@ -269,6 +348,46 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
         if (ImGui::CollapsingHeader("Node Inspector", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::BeginChild("InspectorChild", ImVec2(0, 0), false);
+
+            if (scene->cameraChangesPending)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.8f, 0.5f, 0.1f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.6f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.4f, 0.0f, 1.0f));
+                if (ImGui::CollapsingHeader("Unsaved Camera Changes", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    ImGui::TextWrapped("You moved the active in-scene camera.");
+                    ImGui::Spacing();
+                    if (ImGui::Button("Save Changes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
+                    {
+                        Node *cameraNode = scene->find_node(scene->activeCameraID);
+                        if (cameraNode)
+                        {
+                            if (cameraNode->parent)
+                            {
+                                glm::mat4 parentWorldMat = scene->getWorldTransform(cameraNode->parent->ID);
+                                cameraNode->position = glm::vec3(glm::inverse(parentWorldMat) * glm::vec4(scene->pendingCamPos, 1.0f));
+                            }
+                            else
+                            {
+                                cameraNode->position = scene->pendingCamPos;
+                            }
+                            cameraNode->rotation = glm::vec3(glm::radians(scene->pendingCamPitch), glm::radians(scene->pendingCamYaw + 90.0f), 0.0f);
+                        }
+                        scene->cameraChangesPending = false;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Discard", ImVec2(-1, 0)))
+                    {
+                        scene->cameraChangesPending = false;
+                    }
+                    ImGui::Spacing();
+                }
+                ImGui::PopStyleColor(3);
+                ImGui::Separator();
+                ImGui::Spacing();
+            }
+
             if (selectedNodeID < 0)
             {
                 ImGui::TextDisabled("No node selected.");
@@ -298,7 +417,7 @@ void GUIManager::DrawAddNodeModal()
 
     if (ImGui::BeginPopupModal("Add New Node", &showAddNodeModal, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Particles", "RigidBody", "Empty"};
+        static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Particles", "RigidBody", "Empty", "Camera"};
         static const char *lightTypeLabels[] = {"Directional", "Point", "Spot", "Sun"};
 
         ImGui::InputText("Node Name", nodeNameInput, IM_ARRAYSIZE(nodeNameInput));
@@ -420,6 +539,7 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
         break;
     case NodeType::Empty:
     case NodeType::Root:
+    case NodeType::Camera:
         InspectEmptyNode(scene, selectedNode);
         break;
     default:

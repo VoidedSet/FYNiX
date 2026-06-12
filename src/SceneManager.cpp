@@ -3,6 +3,7 @@
 #include <chrono>
 #include <vector>
 #include <glm/gtc/type_ptr.hpp>
+#include "Camera.h"
 
 using namespace std;
 
@@ -25,6 +26,19 @@ namespace
         }
         return names;
     }();
+
+    glm::vec3 extractXYZ(const glm::mat3& R) {
+        float ey = asin(glm::clamp(R[2][0], -1.0f, 1.0f));
+        float ex, ez;
+        if (cos(ey) > 0.0001f) {
+            ex = atan2(-R[2][1], R[2][2]);
+            ez = atan2(-R[1][0], R[0][0]);
+        } else {
+            ex = atan2(R[1][2], R[1][1]);
+            ez = 0.0f;
+        }
+        return glm::vec3(ex, ey, ez);
+    }
 }
 
 using json = nlohmann::json;
@@ -45,6 +59,8 @@ std::string SceneManager::nodeTypeToString(NodeType type)
         return "ParticleEmitter";
     case NodeType::RigidBody:
         return "RigidBody";
+    case NodeType::Camera:
+        return "Camera";
     default:
         return "Unknown";
     }
@@ -64,6 +80,8 @@ NodeType SceneManager::stringToNodeType(const std::string &str)
         return NodeType::Particles;
     if (str == "RigidBody")
         return NodeType::RigidBody;
+    if (str == "Camera")
+        return NodeType::Camera;
     return NodeType::Empty;
 }
 
@@ -116,7 +134,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     if (type == NodeType::Light)
     {
         Light light(newNode->ID, lightType);
-        lights.push_back(light);
+        lights.emplace(newNode->ID, std::move(light));
     }
     if (forcedID == 0)
         initializeChildTransform(newNode);
@@ -143,7 +161,7 @@ void SceneManager::addToParent(std::string &name, std::string &filepath, NodeTyp
     if (type == NodeType::Model)
     {
         Model model(filepath, newNode->ID);
-        models.push_back(model);
+        models.emplace(newNode->ID, std::move(model));
         std::cout << "[SceneManager] Model loaded and added to node with ID: " << newNode->ID << std::endl;
     }
     if (forcedID == 0)
@@ -210,7 +228,7 @@ void SceneManager::UpdateAsyncLoads()
             load.modelPtr->setRotation(n->rotation);
             load.modelPtr->setScale(n->scale);
         }
-        models.push_back(std::move(*(load.modelPtr)));
+        models.emplace(load.assignedID, std::move(*(load.modelPtr)));
         delete load.modelPtr;
         std::cout << "[SceneManager] Async model loaded and uploaded to GPU: " << load.filepath << std::endl;
     }
@@ -236,7 +254,7 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     if (type == NodeType::Particles)
     {
         ParticleEmitter particleEmitter(sm->findShader("particle"), maxParticles, assignedID);
-        particleEmitters.push_back(particleEmitter);
+        particleEmitters.emplace(assignedID, std::move(particleEmitter));
 
         addToParent(name, NodeType::Light, assignedID, LightType::POINTLIGHT);
     }
@@ -305,7 +323,24 @@ void SceneManager::addToParent(std::string &name, NodeType type, unsigned int pa
     parentNode->children.push_back(newNode);
 
     if (forcedID == 0)
+    {
         initializeChildTransform(newNode);
+        
+        extern Camera *globalCamera;
+        if (type == NodeType::Camera && globalCamera)
+        {
+            if (newNode->parent)
+            {
+                glm::mat4 parentWorldMat = getWorldTransform(newNode->parent->ID);
+                newNode->position = glm::vec3(glm::inverse(parentWorldMat) * glm::vec4(globalCamera->camPos, 1.0f));
+            }
+            else
+            {
+                newNode->position = globalCamera->camPos;
+            }
+            newNode->rotation = glm::vec3(glm::radians(globalCamera->pitch), glm::radians(globalCamera->yaw + 90.0f), 0.0f);
+        }
+    }
 
     std::cout << "[SceneManager] Added new node with ID: " << newNode->ID << " and name: " << newNode->name << std::endl;
 }
@@ -325,6 +360,14 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
             initialNodeRotations[n->ID] = n->rotation;
             initialNodeScales[n->ID] = n->scale;
         }
+
+        // Wake up all rigid bodies when starting simulation
+        for (auto &pair : rigidBodies)
+        {
+            if (pair.second)
+                pair.second->activate(true);
+        }
+
         m_wasSimulating = true;
     }
     else if (!simulate)
@@ -345,8 +388,9 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
 
     // 1. Parallel Animation Updates
     std::atomic<int> counter{0};
-    for (Model &model : models)
+    for (auto &pair : models)
     {
+        Model &model = pair.second;
         if (model.hasAnimation)
         {
             counter.fetch_add(1, std::memory_order_relaxed);
@@ -373,21 +417,24 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
     int lightCount = lights.size();
     shader.setUniforms("numLights", (unsigned int)UniformType::Int, &lightCount);
 
-    for (int i = 0; i < lightCount; ++i)
+    int idx = 0;
+    for (auto &pair : lights)
     {
-        const std::string &posName = (i < 64) ? lightPosUniformNames[i] : ("lightPositions[" + std::to_string(i) + "]");
-        const std::string &colName = (i < 64) ? lightColUniformNames[i] : ("lightColors[" + std::to_string(i) + "]");
+        Light &light = pair.second;
+        const std::string &posName = (idx < 64) ? lightPosUniformNames[idx] : ("lightPositions[" + std::to_string(idx) + "]");
+        const std::string &colName = (idx < 64) ? lightColUniformNames[idx] : ("lightColors[" + std::to_string(idx) + "]");
 
-        glm::mat4 worldMat = getWorldTransform(lights[i].ID);
+        glm::mat4 worldMat = getWorldTransform(light.ID);
         glm::vec3 worldPos = glm::vec3(worldMat[3]);
 
         shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldPos)));
-        shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(lights[i].color)));
+        shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(light.color)));
+        idx++;
     }
 
-    // 3. Main-Thread Drawing Phase
-    for (Model &model : models)
+    for (auto &pair : models)
     {
+        Model &model = pair.second;
         glm::mat4 modelMat = getWorldTransform(model.ID);
         shader.setUniforms("model", (unsigned int)UniformType::Mat4f, glm::value_ptr(modelMat));
         model.Draw(shader);
@@ -397,8 +444,9 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
 void SceneManager::RenderLights(Shader &shader)
 {
     if (drawLights)
-        for (auto &light : lights)
+        for (auto &pair : lights)
         {
+            Light &light = pair.second;
             shader.use();
             glm::mat4 worldMat = getWorldTransform(light.ID);
             worldMat = glm::scale(worldMat, glm::vec3(0.3f));
@@ -410,8 +458,9 @@ void SceneManager::RenderLights(Shader &shader)
 
 void SceneManager::RenderParticles(float dt)
 {
-    for (auto &emitter : particleEmitters)
+    for (auto &pair : particleEmitters)
     {
+        ParticleEmitter &emitter = pair.second;
         glm::mat4 worldMat = getWorldTransform(emitter.ID);
         glm::vec3 worldPos = glm::vec3(worldMat[3]);
 
@@ -454,6 +503,12 @@ void SceneManager::deleteNode(unsigned int ID)
         std::cerr << "[SceneManager] Cannot delete root node." << std::endl;
         return;
     }
+
+    if (ID == activeCameraID)
+    {
+        activeCameraID = 0;
+        cameraChangesPending = false;
+    }
     Node *nodeToDelete = find_node(ID);
     if (!nodeToDelete)
     {
@@ -475,11 +530,10 @@ void SceneManager::deleteNode(unsigned int ID)
 
     if (nodeToDelete->type == NodeType::Model)
     {
-        auto it = std::find_if(models.begin(), models.end(), [&](const Model &m)
-                               { return m.ID == nodeToDelete->ID; });
+        auto it = models.find(nodeToDelete->ID);
         if (it != models.end())
         {
-            std::cout << "[SceneManager] Deleting model with ID: " << it->ID << " and path: " << it->directory << std::endl;
+            std::cout << "[SceneManager] Deleting model with ID: " << it->second.ID << " and path: " << it->second.directory << std::endl;
             models.erase(it);
         }
         else
@@ -490,11 +544,10 @@ void SceneManager::deleteNode(unsigned int ID)
 
     if (nodeToDelete->type == NodeType::Light)
     {
-        auto it = std::find_if(lights.begin(), lights.end(), [&](const Light &m)
-                               { return m.ID == nodeToDelete->ID; });
+        auto it = lights.find(nodeToDelete->ID);
         if (it != lights.end())
         {
-            std::cout << "[SceneManager] Deleting Light with ID: " << it->ID << std::endl;
+            std::cout << "[SceneManager] Deleting Light with ID: " << it->second.ID << std::endl;
             lights.erase(it);
         }
         else
@@ -502,11 +555,10 @@ void SceneManager::deleteNode(unsigned int ID)
     }
     if (nodeToDelete->type == NodeType::Particles)
     {
-        auto it = std::find_if(particleEmitters.begin(), particleEmitters.end(), [&](const ParticleEmitter &m)
-                               { return m.ID == nodeToDelete->ID; });
+        auto it = particleEmitters.find(nodeToDelete->ID);
         if (it != particleEmitters.end())
         {
-            std::cout << "[SceneManager] Deleting Particle Emitter with ID: " << it->ID << std::endl;
+            std::cout << "[SceneManager] Deleting Particle Emitter with ID: " << it->second.ID << std::endl;
             // deleteNode(nodeToDelete->children[0]->ID);
             particleEmitters.erase(it);
         }
@@ -534,25 +586,25 @@ void SceneManager::deleteNode(unsigned int ID)
 
 Model *SceneManager::getModelByID(unsigned int ID)
 {
-    for (Model &model : models)
-        if (model.ID == ID)
-            return &model;
+    auto it = models.find(ID);
+    if (it != models.end())
+        return &it->second;
     return nullptr;
 }
 
 Light *SceneManager::getLightByID(unsigned int ID)
 {
-    for (Light &light : lights)
-        if (light.ID == ID)
-            return &light;
+    auto it = lights.find(ID);
+    if (it != lights.end())
+        return &it->second;
     return nullptr;
 }
 
 ParticleEmitter *SceneManager::getEmitterByID(unsigned int ID)
 {
-    for (ParticleEmitter &emitter : particleEmitters)
-        if (emitter.ID == ID)
-            return &emitter;
+    auto it = particleEmitters.find(ID);
+    if (it != particleEmitters.end())
+        return &it->second;
     return nullptr;
 }
 
@@ -585,22 +637,22 @@ void SceneManager::saveScene()
         // Save model-specific data
         if (node->type == NodeType::Model)
         {
-            auto it = std::find_if(models.begin(), models.end(), [&](const Model &m)
-                                   { return m.ID == node->ID; });
+            auto it = models.find(node->ID);
 
             if (it != models.end())
             {
-                if (!it->directory.empty())
+                Model &model = it->second;
+                if (!model.directory.empty())
                 {
-                    j["modelPath"] = it->directory;
+                    j["modelPath"] = model.directory;
                 }
                 else
                 {
                     std::cerr << "[SceneManager] Warning: Model with ID " << node->ID << " has empty directory." << std::endl;
                 }
-                j["position"] = {it->getPosition().x, it->getPosition().y, it->getPosition().z};
-                j["rotation"] = {it->getRotation().x, it->getRotation().y, it->getRotation().z};
-                j["scale"] = {it->getScale().x, it->getScale().y, it->getScale().z};
+                j["position"] = {model.getPosition().x, model.getPosition().y, model.getPosition().z};
+                j["rotation"] = {model.getRotation().x, model.getRotation().y, model.getRotation().z};
+                j["scale"] = {model.getScale().x, model.getScale().y, model.getScale().z};
             }
             else
             {
@@ -611,13 +663,13 @@ void SceneManager::saveScene()
         // Save light-specific data
         else if (node->type == NodeType::Light)
         {
-            auto it = std::find_if(lights.begin(), lights.end(), [&](const Light &l)
-                                   { return l.ID == node->ID; });
+            auto it = lights.find(node->ID);
 
             if (it != lights.end())
             {
-                j["color"] = {it->color.x, it->color.y, it->color.z};
-                j["position"] = {it->position.x, it->position.y, it->position.z};
+                Light &light = it->second;
+                j["color"] = {light.color.x, light.color.y, light.color.z};
+                j["position"] = {light.position.x, light.position.y, light.position.z};
             }
             else
             {
@@ -627,15 +679,15 @@ void SceneManager::saveScene()
 
         else if (node->type == NodeType::Particles)
         {
-            auto it = std::find_if(particleEmitters.begin(), particleEmitters.end(), [&](const ParticleEmitter &p)
-                                   { return p.ID == node->ID; });
+            auto it = particleEmitters.find(node->ID);
 
             if (it != particleEmitters.end())
             {
-                j["color"] = {it->Color.r, it->Color.g, it->Color.b, it->Color.a};
-                j["position"] = {it->Position.x, it->Position.y, it->Position.z};
-                j["shaderName"] = it->shader.Name;
-                 j["maxParticles"] = it->maxParticles;
+                ParticleEmitter &emitter = it->second;
+                j["color"] = {emitter.Color.r, emitter.Color.g, emitter.Color.b, emitter.Color.a};
+                j["position"] = {emitter.Position.x, emitter.Position.y, emitter.Position.z};
+                j["shaderName"] = emitter.shader ? emitter.shader->Name : "";
+                j["maxParticles"] = emitter.maxParticles;
             }
             else
             {
@@ -664,6 +716,14 @@ void SceneManager::saveScene()
             {
                 std::cerr << "[SceneManager] Warning: No Rigid Body found for node ID " << node->ID << std::endl;
             }
+        }
+
+        // For other types (Empty, Camera, Root), save the node transform properties directly
+        if (node->type == NodeType::Empty || node->type == NodeType::Camera || node->type == NodeType::Root)
+        {
+            j["position"] = {node->position.x, node->position.y, node->position.z};
+            j["rotation"] = {node->rotation.x, node->rotation.y, node->rotation.z};
+            j["scale"] = {node->scale.x, node->scale.y, node->scale.z};
         }
 
         // Recurse into children
@@ -731,6 +791,9 @@ void SceneManager::LoadScene(const std::string &path)
     projectName = data.value("projectName", "UnnamedProject");
 
     // Cleanup
+    activeCameraID = 0;
+    cameraChangesPending = false;
+
     for (Node *node : nodes)
     {
         delete node;
@@ -738,7 +801,8 @@ void SceneManager::LoadScene(const std::string &path)
     nodes.clear();
     nodeMap.clear();
     models.clear();
-    lights.clear(); // Add this if lights are persistent
+    lights.clear();
+    particleEmitters.clear();
     
     if (physics)
     {
@@ -905,6 +969,16 @@ void SceneManager::LoadScene(const std::string &path)
     std::cout << "[SceneManager] Scene loaded successfully." << std::endl;
 }
 
+Node *SceneManager::getCameraNode()
+{
+    for (Node *n : nodes)
+    {
+        if (n->type == NodeType::Camera)
+            return n;
+    }
+    return nullptr;
+}
+
 unsigned int SceneManager::findNextAvailableID()
 {
     unsigned int id = 1;
@@ -990,6 +1064,16 @@ glm::mat4 SceneManager::getWorldTransform(unsigned int id)
                 float m[16];
                 trans.getOpenGLMatrix(m);
                 localMat = glm::make_mat4(m);
+                worldMat = localMat; // Override accumulated transform because Bullet body transform is in world space
+                continue; // Skip the multiplication at the bottom
+            }
+            else
+            {
+                localMat = glm::translate(glm::mat4(1.0f), n->position);
+                localMat = glm::rotate(localMat, n->rotation.x, glm::vec3(1.f, 0.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.y, glm::vec3(0.f, 1.f, 0.f));
+                localMat = glm::rotate(localMat, n->rotation.z, glm::vec3(0.f, 0.f, 1.f));
+                localMat = glm::scale(localMat, n->scale);
             }
         }
         else
@@ -1049,8 +1133,7 @@ void SceneManager::SyncTransforms()
                 rotMat[0] = (scale.x > 0.0f) ? (glm::vec3(localMat[0]) / scale.x) : glm::vec3(1, 0, 0);
                 rotMat[1] = (scale.y > 0.0f) ? (glm::vec3(localMat[1]) / scale.y) : glm::vec3(0, 1, 0);
                 rotMat[2] = (scale.z > 0.0f) ? (glm::vec3(localMat[2]) / scale.z) : glm::vec3(0, 0, 1);
-                glm::quat q = glm::quat_cast(rotMat);
-                n->rotation = glm::eulerAngles(q);
+                n->rotation = extractXYZ(rotMat);
             }
             else
             {
@@ -1174,6 +1257,9 @@ void SceneManager::ResetPhysics()
                     body->getMotionState()->setWorldTransform(it->second);
                 }
             }
+
+            // Wake up rigid body on reset
+            body->activate(true);
         }
     }
     std::cout << "[Physics] Physics world reset to initial positions." << std::endl;
@@ -1201,8 +1287,7 @@ void SceneManager::initializeChildTransform(Node *newNode)
         rotMat[0] = (scale.x > 0.0f) ? (glm::vec3(invParent[0]) / scale.x) : glm::vec3(1, 0, 0);
         rotMat[1] = (scale.y > 0.0f) ? (glm::vec3(invParent[1]) / scale.y) : glm::vec3(0, 1, 0);
         rotMat[2] = (scale.z > 0.0f) ? (glm::vec3(invParent[2]) / scale.z) : glm::vec3(0, 0, 1);
-        glm::quat q = glm::quat_cast(rotMat);
-        newNode->rotation = glm::eulerAngles(q);
+        newNode->rotation = extractXYZ(rotMat);
         
         // Sync to component
         if (newNode->type == NodeType::Model)

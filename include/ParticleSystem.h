@@ -23,13 +23,14 @@ struct Particle
 class ParticleEmitter
 {
 public:
-    unsigned int ID, maxParticles;
+    unsigned int ID = 0, maxParticles = 0;
     glm::vec3 Position = glm::vec3(0.f);
     glm::vec4 Color = glm::vec4(1.0f, 0.5f, 0.2f, 1.0f);
-    Shader shader;
+    Shader *shader = nullptr;
 
-    ParticleEmitter(Shader shader, unsigned int maxParticles);
-    ParticleEmitter(Shader shader, unsigned int maxParticles, unsigned int ID);
+    ParticleEmitter() = default;
+    ParticleEmitter(Shader &shader, unsigned int maxParticles);
+    ParticleEmitter(Shader &shader, unsigned int maxParticles, unsigned int ID);
 
     void Update(float dt);
     void Draw();

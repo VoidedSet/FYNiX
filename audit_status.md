@@ -49,7 +49,7 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 5.2 | Scene load assigns IDs based on insertion order instead of saved JSON IDs | 🔴 Bug | **Done** |
 | 5.3 | Loaded light type is hardcoded to `DIRECTIONAL` | 🔴 Bug | Left to fix |
 | 5.4 | Absolute path saved for models (`it->directory`) instead of relative path | 🟠 Caveat | Left to fix |
-| 5.5 | `LoadScene` does not clear `particleEmitters` before loading | 🟠 Caveat | Left to fix |
+| 5.5 | `LoadScene` does not clear `particleEmitters` before loading | 🟠 Caveat | **Done** |
 | 5.6 | `LoadScene` does not reset GUI `selectedNodeID` | 🟠 Caveat | Left to fix |
 | 5.7 | No "Load Scene" button in GUI | 🟡 Improvement | Left to fix |
 | 5.8 | `saveScene` writes directly to target file with no backup | 🟡 Improvement | Left to fix |
@@ -99,10 +99,10 @@ This document tracks all bugs, caveats, and improvements identified in the codeb
 | 10.9| "Add Node" modal fields do not reset between invocations | 🟡 Improvement | Left to fix |
 | 10.10| `ImGui::PopStyleVar()` called after `ImGui::End()` in `DrawSidePanel` | 🟠 Caveat | Left to fix |
 | **11**| **Architecture & Design** | | |
-| 11.1| Component vectors are stored flat and looked up with O(n) scans | 🟠 Caveat | Left to fix |
-| 11.2| `ShaderManager::findShader` returns `Shader` by value (struct copy) | 🟠 Caveat | Left to fix |
-| 11.3| Heavy transitively chained includes inside `Light.h` and `Mesh.h` | 🟠 Caveat | Left to fix |
-| 11.4| No `Camera` node type in scene graph (cannot be serialized) | 🟠 Caveat | Left to fix |
+| 11.1| Component vectors are stored flat and looked up with O(n) scans | 🟠 Caveat | **Done** |
+| 11.2| `ShaderManager::findShader` returns `Shader` by value (struct copy) | 🟠 Caveat | **Done** |
+| 11.3| Heavy transitively chained includes inside `Light.h` and `Mesh.h` | 🟠 Caveat | **Done** |
+| 11.4| No `Camera` node type in scene graph (cannot be serialized) | 🟠 Caveat | **Done** |
 | 11.5| HardcodedFullscreen on primary monitor with no windowed mode option | 🟡 Improvement | Left to fix |
 | 11.6| No material system (all assets use hardcoded Phong parameters) | 🟡 Improvement | Left to fix |
 | 11.7| `Model::physicsEnabled` is a dead/unused field | 🟡 Improvement | Left to fix |

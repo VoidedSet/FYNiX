@@ -1,6 +1,7 @@
 #include "Model.h"
 #include "Mesh.h"
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace
 {
