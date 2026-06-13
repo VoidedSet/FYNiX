@@ -21,5 +21,5 @@ void VertexArray::Bind()
 
 void VertexArray::UnBind()
 {
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
 }

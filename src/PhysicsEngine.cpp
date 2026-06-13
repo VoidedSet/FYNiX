@@ -2,9 +2,102 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/constants.hpp>
 
 #include <iostream>
+
+namespace
+{
+    Mesh CreateSphereMesh(float radius, unsigned int rings = 16, unsigned int sectors = 16)
+    {
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        float const R = 1.0f / (float)(rings - 1);
+        float const S = 1.0f / (float)(sectors - 1);
+
+        for (unsigned int r = 0; r < rings; ++r) {
+            for (unsigned int s = 0; s < sectors; ++s) {
+                float const y = sin(-glm::half_pi<float>() + glm::pi<float>() * r * R);
+                float const x = cos(2 * glm::pi<float>() * s * S) * sin(glm::pi<float>() * r * R);
+                float const z = sin(2 * glm::pi<float>() * s * S) * sin(glm::pi<float>() * r * R);
+
+                Vertex v;
+                v.postition = glm::vec3(x, y, z) * radius;
+                v.normal = glm::vec3(x, y, z);
+                v.texCoords = glm::vec2(s * S, r * R);
+                vertices.push_back(v);
+            }
+        }
+
+        for (unsigned int r = 0; r < rings - 1; ++r) {
+            for (unsigned int s = 0; s < sectors - 1; ++s) {
+                indices.push_back(r * sectors + s);
+                indices.push_back(r * sectors + (s + 1));
+                indices.push_back((r + 1) * sectors + (s + 1));
+
+                indices.push_back(r * sectors + s);
+                indices.push_back((r + 1) * sectors + (s + 1));
+                indices.push_back((r + 1) * sectors + s);
+            }
+        }
+
+        return Mesh(vertices, indices, {});
+    }
+
+    Mesh CreateCapsuleMesh(float radius, float height, unsigned int subdivisions = 16)
+    {
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        unsigned int rings = subdivisions / 2;
+        unsigned int sectors = subdivisions;
+
+        for (unsigned int r = 0; r <= rings; ++r) {
+            float theta = -glm::half_pi<float>() + glm::pi<float>() * r / rings;
+            float y = sin(theta) * radius;
+            float cosTheta = cos(theta);
+
+            if (theta > 0.0f) {
+                y += height * 0.5f;
+            } else {
+                y -= height * 0.5f;
+            }
+
+            for (unsigned int s = 0; s <= sectors; ++s) {
+                float phi = 2 * glm::pi<float>() * s / sectors;
+                float x = cos(phi) * cosTheta * radius;
+                float z = sin(phi) * cosTheta * radius;
+
+                Vertex v;
+                v.postition = glm::vec3(x, y, z);
+                v.normal = glm::normalize(glm::vec3(x, theta > 0.0f ? y - height * 0.5f : y + height * 0.5f, z));
+                v.texCoords = glm::vec2((float)s / sectors, (float)r / rings);
+                vertices.push_back(v);
+            }
+        }
+
+        for (unsigned int r = 0; r < rings; ++r) {
+            for (unsigned int s = 0; s < sectors; ++s) {
+                unsigned int current = r * (sectors + 1) + s;
+                unsigned int next = current + 1;
+                unsigned int bottom = current + (sectors + 1);
+                unsigned int bottomNext = bottom + 1;
+
+                indices.push_back(current);
+                indices.push_back(next);
+                indices.push_back(bottomNext);
+
+                indices.push_back(current);
+                indices.push_back(bottomNext);
+                indices.push_back(bottom);
+            }
+        }
+
+        return Mesh(vertices, indices, {});
+    }
+}
+
 
 PhysicsEngine::PhysicsEngine()
 {
@@ -20,11 +113,16 @@ PhysicsEngine::PhysicsEngine()
 
     m_dynamicsWorld->setGravity(btVector3(0, -10, 0));
 
+    m_groundBody = nullptr;
+    setGroundPlaneEnabled(true);
+
     std::cout << "[Physics] Physics Engine Initialized" << std::endl;
 }
 
 PhysicsEngine::~PhysicsEngine()
 {
+    setGroundPlaneEnabled(false);
+
     for (int i = m_dynamicsWorld->getNumCollisionObjects() - 1; i >= 0; i--)
     {
         btCollisionObject *obj = m_dynamicsWorld->getCollisionObjectArray()[i];
@@ -59,7 +157,8 @@ void PhysicsEngine::update(float deltaTime)
     // timeStep: The amount of time to simulate, in seconds.
     // maxSubSteps: To ensure simulation accuracy, Bullet can perform smaller internal steps.
     // 10 is a good default value.
-    m_dynamicsWorld->stepSimulation(deltaTime, 10);
+    float clampedDelta = std::min(deltaTime, 0.1f);
+    m_dynamicsWorld->stepSimulation(clampedDelta, 10);
 }
 
 void PhysicsEngine::Draw(Shader &shader)
@@ -86,6 +185,10 @@ void PhysicsEngine::Draw(Shader &shader)
                 btBoxShape *boxShape = static_cast<btBoxShape *>(shape);
                 btVector3 halfExtents = boxShape->getHalfExtentsWithMargin();
                 scale = glm::vec3(halfExtents.x() * 2.0f, halfExtents.y() * 2.0f, halfExtents.z() * 2.0f);
+            }
+            else if (shape->getShapeType() == STATIC_PLANE_PROXYTYPE)
+            {
+                scale = glm::vec3(100.0f, 0.01f, 100.0f);
             }
 
             glm::mat4 modelMatrix;
@@ -161,4 +264,47 @@ void PhysicsEngine::deleteRigidBody(btRigidBody *body)
     delete body;
 
     std::cout << "[Physics] Deleted a Rigid Body!" << std::endl;
+}
+
+void PhysicsEngine::setGroundPlaneEnabled(bool enabled)
+{
+    if (enabled)
+    {
+        if (!m_groundBody)
+        {
+            btCollisionShape *groundShape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
+            m_collisionShapes.push_back(groundShape);
+
+            btTransform groundTransform;
+            groundTransform.setIdentity();
+            groundTransform.setOrigin(btVector3(0.0f, 0.0f, 0.0f));
+
+            btDefaultMotionState *myMotionState = new btDefaultMotionState(groundTransform);
+            btRigidBody::btRigidBodyConstructionInfo rbInfo(0.0f, myMotionState, groundShape, btVector3(0.0f, 0.0f, 0.0f));
+            m_groundBody = new btRigidBody(rbInfo);
+
+            m_dynamicsWorld->addRigidBody(m_groundBody);
+            std::cout << "[Physics] Infinite ground plane enabled." << std::endl;
+        }
+    }
+    else
+    {
+        if (m_groundBody)
+        {
+            m_dynamicsWorld->removeRigidBody(m_groundBody);
+            if (m_groundBody->getMotionState())
+            {
+                delete m_groundBody->getMotionState();
+            }
+            btCollisionShape *shape = m_groundBody->getCollisionShape();
+            if (shape)
+            {
+                m_collisionShapes.erase(std::remove(m_collisionShapes.begin(), m_collisionShapes.end(), shape), m_collisionShapes.end());
+                delete shape;
+            }
+            delete m_groundBody;
+            m_groundBody = nullptr;
+            std::cout << "[Physics] Infinite ground plane disabled." << std::endl;
+        }
+    }
 }

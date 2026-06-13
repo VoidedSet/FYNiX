@@ -1,4 +1,5 @@
 #include "Shader.h"
+#include <cstring>
 
 using namespace std;
 
@@ -94,7 +95,7 @@ void Shader::checkCompileErrors(unsigned int id, const char *type)
     int success;
     char infoLog[512];
 
-    if (type == "Shader")
+    if (strcmp(type, "Shader") == 0)
     {
         glGetShaderiv(id, GL_COMPILE_STATUS, &success);
 
@@ -105,7 +106,7 @@ void Shader::checkCompileErrors(unsigned int id, const char *type)
                  << infoLog << endl;
         }
     }
-    else if (type == "Program")
+    else if (strcmp(type, "Program") == 0)
     {
         glGetProgramiv(id, GL_LINK_STATUS, &success);
 
@@ -125,7 +126,7 @@ void Shader::use()
 
 void Shader::setUniforms(const char *uName, unsigned int type, void *value)
 {
-    int location = glGetUniformLocation(ID, uName);
+    int location = getUniformLocation(uName);
     if (location == -1)
     {
         cerr << "[Shader - ERROR] Uniform '" << uName << "' not found." << endl;
@@ -174,4 +175,17 @@ void Shader::setUniforms(const char *uName, unsigned int type, void *value)
         cerr << "[Shader - ERROR]: Unknown uniform type.\n";
         break;
     }
+}
+
+int Shader::getUniformLocation(const std::string &name)
+{
+    auto it = uniformLocations.find(name);
+    if (it != uniformLocations.end())
+    {
+        return it->second;
+    }
+
+    int location = glGetUniformLocation(ID, name.c_str());
+    uniformLocations[name] = location;
+    return location;
 }

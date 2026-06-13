@@ -5,8 +5,8 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 
-ParticleEmitter::ParticleEmitter(Shader shader, unsigned int maxParticles)
-    : shader(shader), maxParticles(maxParticles), lastUsedParticle(0)
+ParticleEmitter::ParticleEmitter(Shader &shader, unsigned int maxParticles)
+    : shader(&shader), maxParticles(maxParticles), lastUsedParticle(0)
 {
     this->particles.resize(maxParticles);
 
@@ -15,8 +15,8 @@ ParticleEmitter::ParticleEmitter(Shader shader, unsigned int maxParticles)
     init();
 }
 
-ParticleEmitter::ParticleEmitter(Shader shader, unsigned int maxParticles, unsigned int ID)
-    : shader(shader), maxParticles(maxParticles), lastUsedParticle(0), ID(ID)
+ParticleEmitter::ParticleEmitter(Shader &shader, unsigned int maxParticles, unsigned int ID)
+    : shader(&shader), maxParticles(maxParticles), lastUsedParticle(0), ID(ID)
 {
     this->particles.resize(maxParticles);
 
@@ -66,13 +66,13 @@ void ParticleEmitter::init()
     glBindVertexArray(0);
 }
 
-void ParticleEmitter::SpawnParticle(Particle particle)
+void ParticleEmitter::SpawnParticle(Particle particle, const glm::vec3 &spawnPos)
 {
     unsigned int particleIndex = this->firstUnusedParticle();
     if (particleIndex < this->particles.size())
     {
         Particle &p = this->particles[particleIndex];
-        p.Position = particle.Position + Position;
+        p.Position = particle.Position + spawnPos;
         p.Velocity = particle.Velocity;
         p.Life = particle.Life;
         p.Size = particle.Size;
@@ -126,15 +126,18 @@ void ParticleEmitter::Draw()
         glBufferSubData(GL_ARRAY_BUFFER, 0, activeParticles * 8 * sizeof(float), &this->particleData[0]);
 
         // Use the particle shader and bind the VAO
-        this->shader.use();
+        if (this->shader)
+            this->shader->use();
         glBindVertexArray(this->VAO);
 
         // Enable blending for transparent particles
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE); // Additive blending for fire/smoke
+        glDepthMask(GL_FALSE);
 
         glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, activeParticles);
 
+        glDepthMask(GL_TRUE);
         glBindVertexArray(0);
         glDisable(GL_BLEND);
     }

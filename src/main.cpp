@@ -163,9 +163,9 @@ int main()
         sm.addShader("default", "shaders/model/vertex.glsl", "shaders/model/fragment.glsl"),
         sm.addShader("particle", "shaders/particles/particles.vert", "shaders/particles/particles.frag");
 
-    Shader lightShader = sm.findShader("light"),
-           particleShader = sm.findShader("particle"),
-           defaultShader = sm.findShader("default");
+    Shader &lightShader = sm.findShader("light");
+    Shader &particleShader = sm.findShader("particle");
+    Shader &defaultShader = sm.findShader("default");
 
     sm.listShaders();
 
@@ -173,7 +173,7 @@ int main()
 
     glm::mat4 model = glm::mat4(0.f);
     glm::mat4 projection = glm::mat4(0.f);
-    projection = glm::perspective(glm::radians(45.f), (float)(windowManager.mode->width / windowManager.mode->height), 0.1f, 100.f);
+    projection = glm::perspective(glm::radians(45.f), (float)windowManager.mode->width / (float)windowManager.mode->height, 0.1f, 100.f);
 
     defaultShader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(model));
     defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
@@ -198,6 +198,15 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
+
+        static bool lastDirtyState = false;
+        if (scene.isDirty != lastDirtyState)
+        {
+            std::string title = projectName + (scene.isDirty ? " *" : "");
+            glfwSetWindowTitle(window, title.c_str());
+            lastDirtyState = scene.isDirty;
+        }
+
         // ==== DELTA TIME ====
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -208,6 +217,77 @@ int main()
 
         //===== INPUT SECTION =====
         inputHandler(window, deltaTime, globalCamera ? *globalCamera : cam);
+
+        // Synchronize Active Camera with SceneGraph if in-scene camera is selected
+        Camera &activeCam = globalCamera ? *globalCamera : cam;
+        if (scene.activeCameraID != 0)
+        {
+            Node *cameraNode = scene.find_node(scene.activeCameraID);
+            if (cameraNode && cameraNode->type == NodeType::Camera)
+            {
+                if (activeCam.cameraLock)
+                {
+                    // Flying mode: update pending properties
+                    scene.cameraChangesPending = true;
+                    scene.pendingCamPos = activeCam.camPos;
+                    scene.pendingCamYaw = activeCam.yaw;
+                    scene.pendingCamPitch = activeCam.pitch;
+                }
+                else
+                {
+                    // Not flying mode
+                    if (scene.cameraChangesPending)
+                    {
+                        // Use pending properties so view stays where we flew
+                        activeCam.camPos = scene.pendingCamPos;
+                        activeCam.yaw = scene.pendingCamYaw;
+                        activeCam.pitch = scene.pendingCamPitch;
+                        
+                        glm::vec3 direction;
+                        direction.x = cos(glm::radians(activeCam.yaw)) * cos(glm::radians(activeCam.pitch));
+                        direction.y = sin(glm::radians(activeCam.pitch));
+                        direction.z = sin(glm::radians(activeCam.yaw)) * cos(glm::radians(activeCam.pitch));
+                        activeCam.camTarget = glm::normalize(direction);
+                        
+                        *activeCam.view = glm::lookAt(activeCam.camPos, activeCam.camPos + activeCam.camTarget, activeCam.camUp);
+                    }
+                    else
+                    {
+                        // Sync view to the camera node's actual world transform
+                        glm::mat4 cameraWorldMat = scene.getWorldTransform(cameraNode->ID);
+                        activeCam.camPos = glm::vec3(cameraWorldMat[3]);
+                        activeCam.camTarget = -glm::normalize(glm::vec3(cameraWorldMat[2]));
+                        activeCam.camUp = glm::normalize(glm::vec3(cameraWorldMat[1]));
+
+                        activeCam.pitch = glm::degrees(asin(activeCam.camTarget.y));
+                        activeCam.yaw = glm::degrees(atan2(activeCam.camTarget.z, activeCam.camTarget.x));
+
+                        *activeCam.view = glm::lookAt(activeCam.camPos, activeCam.camPos + activeCam.camTarget, activeCam.camUp);
+                    }
+                }
+            }
+            else
+            {
+                // Active camera node was deleted or invalid, fall back to Viewport Camera
+                if (globalCamera)
+                {
+                    globalCamera->camPos = scene.viewportCamPos;
+                    globalCamera->yaw = scene.viewportYaw;
+                    globalCamera->pitch = scene.viewportPitch;
+                    globalCamera->camUp = glm::vec3(0.0f, 1.0f, 0.0f);
+                    
+                    glm::vec3 direction;
+                    direction.x = cos(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                    direction.y = sin(glm::radians(globalCamera->pitch));
+                    direction.z = sin(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                    globalCamera->camTarget = glm::normalize(direction);
+                    *globalCamera->view = glm::lookAt(globalCamera->camPos, globalCamera->camPos + globalCamera->camTarget, globalCamera->camUp);
+                }
+                scene.activeCameraID = 0;
+                scene.cameraChangesPending = false;
+            }
+        }
+
         defaultShader.use();
         defaultShader.setUniforms("view", static_cast<unsigned int>(UniformType::Mat4f), (void *)glm::value_ptr(view));
         defaultShader.setUniforms("uCamPos", static_cast<unsigned int>(UniformType::Vec3f), (void *)glm::value_ptr(globalCamera ? globalCamera->camPos : cam.camPos));
@@ -246,13 +326,14 @@ int main()
 
         defaultShader.use();
 
-        if (scene.models.size() > 0)
+        if (!scene.models.empty())
             scene.RenderModels(defaultShader, deltaTime);
-        if (scene.lights.size() > 0)
+        if (!scene.lights.empty())
             scene.RenderLights(lightShader);
-        if (scene.particleEmitters.size() > 0)
+        scene.RenderCameras(lightShader);
+        if (!scene.particleEmitters.empty())
             scene.RenderParticles(deltaTime);
-        if (scene.rigidBodies.size() > 0)
+        if (!scene.rigidBodies.empty())
             scene.RenderPhysics(deltaTime, lightShader);
 
         gui.Render();

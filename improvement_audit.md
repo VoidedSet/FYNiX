@@ -187,17 +187,23 @@ The uniform block upload in `Model::Draw` iterates `finalBoneMatrices` only when
 
 ---
 
-### 🟡 `glViewport(0, 250, renderWidth, renderHeight)` — the Y-origin is hardcoded to 250px
+### ~~🟡 `glViewport(0, 250, renderWidth, renderHeight)` — the Y-origin is hardcoded to 250px~~
+> ⏭️ **Skipped** — low risk as long as `CONSOLE_HEIGHT` constant doesn't move. Fix if you ever resize the panel.
+
 The viewport is offset by 250px from the bottom to account for the console panel, but this value is hardcoded and doesn't respond to the `CONSOLE_HEIGHT` constant (which is actually 180px in `DrawConsolePanel`). If the console height changes this breaks.
 
 ---
 
-### 🟡 Camera speed is hardcoded to `20.0f * deltaTime` — no UI control, no sprint key
+### ~~🟡 Camera speed is hardcoded to `20.0f * deltaTime` — no UI control, no sprint key~~
+> ⏭️ **Skipped** — not a bug, just a missing UX nicety for an internal tool. Add when the editor becomes more user-facing.
+
 Movement speed cannot be adjusted in the editor or at runtime. There's no shift-to-sprint.
 
 ---
 
-### 🟡 Cube `Mesh(MeshType::CUBE)` uses a non-indexed vertex buffer with 36 raw vertices
+### ~~🟡 Cube `Mesh(MeshType::CUBE)` uses a non-indexed vertex buffer with 36 raw vertices~~
+> ⏭️ **Skipped** — pedantic. Wastes ~144 bytes of VRAM; not worth touching unless you're overhauling the primitive mesh path.
+
 The cube mesh used for lights and physics debug has `cubeVert[]` with 36 raw vertices (no EBO) but also has an EBO initialized with `cubeIndices[36]`. The `Draw` function checks `if (indices.size() > 1)` — since only `indices.push_back(0)` is called in the `MeshType` constructor, `indices.size() == 1` and it always falls into `glDrawArrays(GL_TRIANGLES, 0, 36)`. The EBO is wasted. Either use indexed drawing properly or remove the EBO from the primitive mesh path.
 
 ---
@@ -288,7 +294,9 @@ After loading a new scene, the GUI may still have a stale `selectedNodeID` point
 
 ---
 
-### 🟡 `saveScene` writes directly to the project file with no backup
+### ~~🟡 `saveScene` writes directly to the project file with no backup~~
+> ⏭️ **Skipped** — standard game-dev practice to skip until near-shipping. Add atomic rename when the project file format stabilises.
+
 If the process crashes mid-write, the project file is corrupted. Writing to a `.tmp` file and renaming atomically is safer.
 
 ---
@@ -339,8 +347,10 @@ The GUI directly writes `animator.currentTime` via `seek()` while the JobSystem 
 
 ---
 
-### 🟡 `animationNames` and `animations` vectors are kept in sync manually — brittle
-If an animation is ever removed or the indices shift, the name list could desync. Wrapping them together in a struct would be safer.
+### ~~🟡 `animationNames` and `animations` vectors are kept in sync manually — brittle~~
+> ⏭️ **Skipped** — low actual risk; they're always pushed together at load time. Worth a struct wrap eventually, but nothing is broken.
+
+`setAnimation(index)` immediately resets `currentTime` to 0 and switches. Blending from the current pose to the new animation over N frames would be much smoother.
 
 ---
 
@@ -386,7 +396,9 @@ job.work = [&model, deltaTime]() { model.UpdateAnimation(deltaTime); };
 
 ---
 
-### 🟡 No thread names assigned to workers
+### ~~🟡 No thread names assigned to workers~~
+> ⏭️ **Skipped** — only matters when profiling. Add when you're doing a threading pass.
+
 Worker threads have no names, making them indistinguishable in profilers/debuggers.
 
 ---
@@ -401,7 +413,9 @@ The "Run Micro-Benchmark" button executes `ExecuteMicroBenchmark` twice sequenti
 
 ---
 
-### 🟡 Hardcoded 200-bone limit in shader with no CPU-side validation
+### ~~🟡 Hardcoded 200-bone limit in shader with no CPU-side validation~~
+> ⏭️ **Skipped** — not firing on current assets. Add a `assert(bones <= 200)` guard if you ever load high-bone-count rigs.
+
 ```glsl
 uniform mat4 bone_transforms[200];
 ```
@@ -457,7 +471,9 @@ When a `ParticleEmitter` is destroyed (e.g., via `deleteNode`), `glDeleteBuffers
 
 ---
 
-### 🟡 Particle `Life` initial value in `Particle()` constructor is `0.0f`
+### ~~🟡 Particle `Life` initial value in `Particle()` constructor is `0.0f`~~
+> ⏭️ **Skipped** — the pool works correctly as-is. `0.0f` doubles as the "unused" sentinel and the pool scan finds it immediately. Only change if the pool logic is refactored.
+
 ```cpp
 Particle() : Position(0.0f), Velocity(0.0f), Color(1.0f), Life(0.0f) {}
 ```

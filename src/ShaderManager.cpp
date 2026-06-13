@@ -34,3 +34,17 @@ Shader &ShaderManager::findShader(const std::string &shaderName)
         throw; // Re-throw the exception
     }
 }
+
+bool ShaderManager::deleteShader(const char *shaderName)
+{
+    if (!shaderName)
+        return false;
+    auto it = shaderMap.find(shaderName);
+    if (it != shaderMap.end())
+    {
+        glDeleteProgram(it->second.ID);
+        shaderMap.erase(it);
+        return true;
+    }
+    return false;
+}

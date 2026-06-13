@@ -1,7 +1,7 @@
 #pragma once
 
 // #include <vector>
-#include <map>
+#include <unordered_map>
 
 #include "Shader.h"
 
@@ -31,6 +31,6 @@ public:
     }
 
 private:
-    std::map<std::string, Shader> shaderMap;
+    std::unordered_map<std::string, Shader> shaderMap;
     unsigned int shaderCount = 0;
 };

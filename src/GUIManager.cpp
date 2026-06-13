@@ -1,6 +1,9 @@
 #include "GUI.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "JobSystem.h"
+#include "Camera.h"
+
+extern Camera *globalCamera;
 
 #include <windows.h>
 #include <psapi.h>
@@ -21,6 +24,7 @@ namespace
     int parentNodeId = 0;
     int selectedNodeType = 1;  // Default to Model
     int selectedLightType = 0; // Default to Directional
+    int selectedRigidBodyShape = 0; // Default to Cube
     int maxParticles = 1000;
     float rigidBodyMass = 1.0f;
     bool drawLights = true;
@@ -46,6 +50,7 @@ namespace
     void InspectLightNode(SceneManager *scene, Node *selectedNode);
     void InspectParticleEmitterNode(SceneManager *scene, Node *particleNode);
     void InspectRigidBodyNode(SceneManager *scene, Node *rigidBodyNode);
+    void InspectEmptyNode(SceneManager *scene, Node *selectedNode);
 }
 
 // ===================================================================================
@@ -208,6 +213,15 @@ void GUIManager::Shutdown()
 
 void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
 {
+    // Keyboard shortcuts for Undo/Redo
+    if (ImGui::GetIO().KeyCtrl)
+    {
+        if (ImGui::IsKeyPressed(ImGuiKey_Z))
+            scene->undo();
+        if (ImGui::IsKeyPressed(ImGuiKey_Y))
+            scene->redo();
+    }
+
     ImGui::SetNextWindowPos(ImVec2(windowWidth - SIDE_PANEL_WIDTH, 0), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(SIDE_PANEL_WIDTH, windowHeight), ImGuiCond_Always);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f); // No border for a cleaner look
@@ -219,16 +233,147 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
             if (ImGui::Button("Add Node...", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
                 showAddNodeModal = true;
             ImGui::SameLine();
+            
+            // Highlight Save button when scene has unsaved changes (dirty)
+            bool wasDirty = scene->isDirty;
+            if (wasDirty)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.7f, 0.3f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.5f, 0.1f, 1.0f));
+            }
+            else
+            {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.5f);
+            }
+
             if (ImGui::Button("Save Scene", ImVec2(-1, 0)))
                 scene->saveScene(); // Fill remaining space
 
+            if (wasDirty)
+                ImGui::PopStyleColor(3);
+            else
+                ImGui::PopStyleVar();
+
+            // Undo / Redo controls in UI
             ImGui::Spacing();
+            bool canUndo = !scene->undoStack.empty();
+            bool canRedo = !scene->redoStack.empty();
+            
+            if (!canUndo) ImGui::BeginDisabled();
+            if (ImGui::Button("Undo", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
+                scene->undo();
+            if (!canUndo) ImGui::EndDisabled();
+            
+            ImGui::SameLine();
+            
+            if (!canRedo) ImGui::BeginDisabled();
+            if (ImGui::Button("Redo", ImVec2(-1, 0)))
+                scene->redo();
+            if (!canRedo) ImGui::EndDisabled();
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Text("Camera View");
+            
+            const char* currentCamLabel = "Viewport Camera";
+            if (scene->activeCameraID != 0)
+            {
+                Node* camNode = scene->find_node(scene->activeCameraID);
+                if (camNode)
+                    currentCamLabel = camNode->name.c_str();
+            }
+
+            if (ImGui::BeginCombo("Active Camera", currentCamLabel))
+            {
+                bool isSelected = (scene->activeCameraID == 0);
+                if (ImGui::Selectable("Viewport Camera", isSelected))
+                {
+                    if (scene->activeCameraID != 0)
+                    {
+                        if (globalCamera)
+                        {
+                            scene->cameraChangesPending = false;
+                            globalCamera->camPos = scene->viewportCamPos;
+                            globalCamera->yaw = scene->viewportYaw;
+                            globalCamera->pitch = scene->viewportPitch;
+                            globalCamera->camUp = glm::vec3(0.0f, 1.0f, 0.0f);
+                            
+                            glm::vec3 direction;
+                            direction.x = cos(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                            direction.y = sin(glm::radians(globalCamera->pitch));
+                            direction.z = sin(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
+                            globalCamera->camTarget = glm::normalize(direction);
+                            *globalCamera->view = glm::lookAt(globalCamera->camPos, globalCamera->camPos + globalCamera->camTarget, globalCamera->camUp);
+                        }
+                        scene->activeCameraID = 0;
+                    }
+                }
+
+                for (Node *n : scene->nodes)
+                {
+                    if (n->type == NodeType::Camera)
+                    {
+                        bool isSel = (scene->activeCameraID == n->ID);
+                        if (ImGui::Selectable(n->name.c_str(), isSel))
+                        {
+                            if (scene->activeCameraID != n->ID)
+                            {
+                                if (globalCamera)
+                                {
+                                    if (scene->activeCameraID == 0)
+                                    {
+                                        scene->viewportCamPos = globalCamera->camPos;
+                                        scene->viewportYaw = globalCamera->yaw;
+                                        scene->viewportPitch = globalCamera->pitch;
+                                    }
+                                    
+                                    scene->cameraChangesPending = false;
+                                    
+                                    glm::mat4 cameraWorldMat = scene->getWorldTransform(n->ID);
+                                    globalCamera->camPos = glm::vec3(cameraWorldMat[3]);
+                                    globalCamera->camTarget = -glm::normalize(glm::vec3(cameraWorldMat[2]));
+                                    globalCamera->camUp = glm::normalize(glm::vec3(cameraWorldMat[1]));
+
+                                    globalCamera->pitch = glm::degrees(asin(globalCamera->camTarget.y));
+                                    globalCamera->yaw = glm::degrees(atan2(globalCamera->camTarget.z, globalCamera->camTarget.x));
+
+                                    *globalCamera->view = glm::lookAt(globalCamera->camPos, globalCamera->camPos + globalCamera->camTarget, globalCamera->camUp);
+                                }
+                                scene->activeCameraID = n->ID;
+                            }
+                        }
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::Separator();
+            ImGui::Spacing();
+
             if (ImGui::Checkbox("Draw Light Gizmos", &drawLights))
                 scene->drawLights = drawLights;
             if (ImGui::Checkbox("Draw Physics Debug", &drawPhysics))
                 scene->drawPhysics = drawPhysics;
             if (ImGui::Checkbox("Simulate Physics", &simulatePhysics))
                 scene->simulate = simulatePhysics;
+
+            bool groundEnabled = scene->infiniteFloor;
+            if (ImGui::Checkbox("Infinite Floor", &groundEnabled))
+            {
+                scene->infiniteFloor = groundEnabled;
+                if (scene->physics)
+                {
+                    scene->physics->setGroundPlaneEnabled(groundEnabled);
+                }
+            }
+
+            static float physicsGravity = 10.0f;
+            if (ImGui::DragFloat("Gravity", &physicsGravity, 0.1f, -100.0f, 100.0f, "%.2f"))
+            {
+                if (scene->physics)
+                    scene->physics->setGravity(physicsGravity);
+            }
+
             if (!simulatePhysics)
             {
                 ImGui::SameLine();
@@ -249,6 +394,47 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
         if (ImGui::CollapsingHeader("Node Inspector", ImGuiTreeNodeFlags_DefaultOpen))
         {
             ImGui::BeginChild("InspectorChild", ImVec2(0, 0), false);
+
+            if (scene->cameraChangesPending)
+            {
+                ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.8f, 0.5f, 0.1f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.9f, 0.6f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.7f, 0.4f, 0.0f, 1.0f));
+                if (ImGui::CollapsingHeader("Unsaved Camera Changes", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    ImGui::TextWrapped("You moved the active in-scene camera.");
+                    ImGui::Spacing();
+                    if (ImGui::Button("Save Changes", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
+                    {
+                        Node *cameraNode = scene->find_node(scene->activeCameraID);
+                        if (cameraNode)
+                        {
+                            scene->pushUndoState();
+                            if (cameraNode->parent)
+                            {
+                                glm::mat4 parentWorldMat = scene->getWorldTransform(cameraNode->parent->ID);
+                                cameraNode->position = glm::vec3(glm::inverse(parentWorldMat) * glm::vec4(scene->pendingCamPos, 1.0f));
+                            }
+                            else
+                            {
+                                cameraNode->position = scene->pendingCamPos;
+                            }
+                            cameraNode->rotation = glm::vec3(glm::radians(scene->pendingCamPitch), glm::radians(scene->pendingCamYaw + 90.0f), 0.0f);
+                        }
+                        scene->cameraChangesPending = false;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Discard", ImVec2(-1, 0)))
+                    {
+                        scene->cameraChangesPending = false;
+                    }
+                    ImGui::Spacing();
+                }
+                ImGui::PopStyleColor(3);
+                ImGui::Separator();
+                ImGui::Spacing();
+            }
+
             if (selectedNodeID < 0)
             {
                 ImGui::TextDisabled("No node selected.");
@@ -278,7 +464,7 @@ void GUIManager::DrawAddNodeModal()
 
     if (ImGui::BeginPopupModal("Add New Node", &showAddNodeModal, ImGuiWindowFlags_AlwaysAutoResize))
     {
-        static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Particles", "RigidBody", "Empty"};
+        static const char *nodeTypeLabels[] = {"Root", "Model", "Light", "Particles", "RigidBody", "Empty", "Camera"};
         static const char *lightTypeLabels[] = {"Directional", "Point", "Spot", "Sun"};
 
         ImGui::InputText("Node Name", nodeNameInput, IM_ARRAYSIZE(nodeNameInput));
@@ -287,12 +473,34 @@ void GUIManager::DrawAddNodeModal()
         ImGui::Separator();
 
         static bool loadAsynchronously = true;
+        static int modelSource = 0; // 0 = File, 1 = Primitive
+        static int selectedPrimitive = 0;
 
         switch (static_cast<NodeType>(selectedNodeType))
         {
         case NodeType::Model:
-            ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
-            ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
+            {
+                ImGui::RadioButton("Load from File", &modelSource, 0); ImGui::SameLine();
+                ImGui::RadioButton("Create Primitive", &modelSource, 1);
+                
+                if (modelSource == 0)
+                {
+                    ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
+                    ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
+                }
+                else
+                {
+                    static const char* primitiveLabels[] = {"Box", "Sphere", "Cylinder", "Cone"};
+                    ImGui::Combo("Shape", &selectedPrimitive, primitiveLabels, IM_ARRAYSIZE(primitiveLabels));
+                    
+                    if (selectedPrimitive == 0) strcpy(modelPathInput, "primitive:box");
+                    else if (selectedPrimitive == 1) strcpy(modelPathInput, "primitive:sphere");
+                    else if (selectedPrimitive == 2) strcpy(modelPathInput, "primitive:cylinder");
+                    else if (selectedPrimitive == 3) strcpy(modelPathInput, "primitive:cone");
+                    
+                    loadAsynchronously = false; // Primitives are instant
+                }
+            }
             break;
         case NodeType::Light:
             ImGui::Combo("Light Type", &selectedLightType, lightTypeLabels, IM_ARRAYSIZE(lightTypeLabels));
@@ -311,6 +519,7 @@ void GUIManager::DrawAddNodeModal()
         ImGui::Separator();
         if (ImGui::Button("OK", ImVec2(120, 0)))
         {
+            scene->pushUndoState();
             std::string nameStr(nodeNameInput);
             std::string modelPathStr(modelPathInput);
             std::string shaderNameStr(shaderNameInput);
@@ -398,6 +607,11 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
     case NodeType::RigidBody:
         InspectRigidBodyNode(scene, selectedNode);
         break;
+    case NodeType::Empty:
+    case NodeType::Root:
+    case NodeType::Camera:
+        InspectEmptyNode(scene, selectedNode);
+        break;
     default:
         ImGui::TextDisabled("This node type has no editable properties.");
         break;
@@ -410,6 +624,7 @@ void GUIManager::selectedItemInspector(Node *selectedNode)
     if (ImGui::Button("Delete Node", ImVec2(-1, 0)))
     {
         std::cout << "Deleting node with ID: " << selectedNode->ID << std::endl;
+        scene->pushUndoState();
         scene->deleteNode(selectedNode->ID);
         selectedNodeID = -1;
     }
@@ -462,11 +677,52 @@ namespace
 
         ImGui::PushItemWidth(-FLT_MIN * 0.5f); // Make drag floats take up half the width
         if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
+        {
             model->setPosition(position);
+            selectedNode->position = position;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(rotation), 0.1f))
+        {
             model->setRotation(rotation);
+            selectedNode->rotation = rotation;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::DragFloat3("Scale", glm::value_ptr(scale), 0.01f))
+        {
             model->setScale(scale);
+            selectedNode->scale = scale;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        ImGui::PopItemWidth();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Text("Material Parameters");
+        ImGui::Spacing();
+
+        ImGui::PushItemWidth(-FLT_MIN * 0.5f);
+        if (ImGui::ColorEdit3("Ambient", glm::value_ptr(model->material.ambient))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(model->material.diffuse))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::ColorEdit3("Specular", glm::value_ptr(model->material.specular))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::DragFloat("Shininess", &model->material.shininess, 0.5f, 1.0f, 256.0f, "%.1f")) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
         ImGui::PopItemWidth();
 
         if (model->hasAnimation)
@@ -508,8 +764,28 @@ namespace
         Light *light = scene->getLightByID(selectedNode->ID);
         if (!light)
             return;
-        ImGui::DragFloat3("Position", glm::value_ptr(light->position), 0.1f);
-        ImGui::ColorEdit3("Color", glm::value_ptr(light->color));
+        if (ImGui::DragFloat3("Position", glm::value_ptr(light->position), 0.1f))
+        {
+            selectedNode->position = light->position;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        glm::vec3 eulerRotation = glm::degrees(selectedNode->rotation);
+        if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 0.1f))
+        {
+            selectedNode->rotation = glm::radians(eulerRotation);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::DragFloat("Intensity", &light->intensity, 0.05f, 0.0f, 100.0f)) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::ColorEdit3("Color", glm::value_ptr(light->color))) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
     }
 
     void InspectParticleEmitterNode(SceneManager *scene, Node *particleNode)
@@ -524,11 +800,17 @@ namespace
         if (ImGui::DragFloat3("Position", glm::value_ptr(emitter->Position), 0.1f))
         {
             light->position = emitter->Position;
+            particleNode->position = emitter->Position;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::ColorEdit4("Color", glm::value_ptr(emitter->Color)))
         {
             light->color = glm::vec3(emitter->Color);
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
     }
 
     void InspectRigidBodyNode(SceneManager *scene, Node *rigidBodyNode)
@@ -552,9 +834,20 @@ namespace
 
         bool transformChanged = false;
         if (ImGui::DragFloat3("Position", glm::value_ptr(position), 0.01f))
+        {
             transformChanged = true;
+            rigidBodyNode->position = position;
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 1.0f))
+        {
             transformChanged = true;
+            rigidBodyNode->rotation = glm::radians(eulerRotation);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
 
         if (transformChanged)
         {
@@ -570,7 +863,19 @@ namespace
         {
             body->getCollisionShape()->setLocalScaling(btVector3(scale.x, scale.y, scale.z));
             scene->physics->getDynamicsWorld()->updateSingleAabb(body);
+
+            // Recompute local inertia and update mass props
+            float mass = (body->getInvMass() == 0.0f) ? 0.0f : 1.0f / body->getInvMass();
+            btVector3 localInertia(0, 0, 0);
+            if (mass > 0.0f)
+                body->getCollisionShape()->calculateLocalInertia(mass, localInertia);
+            body->setMassProps(mass, localInertia);
+            body->updateInertiaTensor();
+
+            rigidBodyNode->scale = scale;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
 
         ImGui::Spacing();
         ImGui::Separator();
@@ -585,12 +890,47 @@ namespace
                 body->getCollisionShape()->calculateLocalInertia(mass, localInertia);
             body->setMassProps(mass, localInertia);
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         float friction = body->getFriction();
         if (ImGui::DragFloat("Friction", &friction, 0.05f, 0.0f, 5.0f))
             body->setFriction(friction);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
         float restitution = body->getRestitution();
         if (ImGui::DragFloat("Restitution", &restitution, 0.05f, 0.0f, 1.0f))
             body->setRestitution(restitution);
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+    }
+
+    void InspectEmptyNode(SceneManager *scene, Node *selectedNode)
+    {
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Text("Transform");
+        ImGui::Spacing();
+
+        ImGui::PushItemWidth(-FLT_MIN * 0.5f);
+        if (ImGui::DragFloat3("Position", glm::value_ptr(selectedNode->position), 0.01f)) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+        
+        glm::vec3 eulerRotation = glm::degrees(selectedNode->rotation);
+        if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 0.1f))
+        {
+            selectedNode->rotation = glm::radians(eulerRotation);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::DragFloat3("Scale", glm::value_ptr(selectedNode->scale), 0.01f)) {}
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        ImGui::PopItemWidth();
     }
 
     double ExecuteMicroBenchmark(bool useLockFree)

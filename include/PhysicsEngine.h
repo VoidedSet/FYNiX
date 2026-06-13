@@ -30,7 +30,10 @@ public:
     btRigidBody *createBoxRigidBody(glm::vec3 position, glm::vec3 size, float mass);
     void deleteRigidBody(btRigidBody *body);
 
-    void setGravity(int gravity) { m_dynamicsWorld->setGravity(btVector3(0, -gravity, 0)); }
+    void setGravity(float gravity) { m_dynamicsWorld->setGravity(btVector3(0, -gravity, 0)); }
+
+    void setGroundPlaneEnabled(bool enabled);
+    bool isGroundPlaneEnabled() const { return m_groundBody != nullptr; }
 
 private:
     btDefaultCollisionConfiguration *m_collisionConfiguration;
@@ -38,6 +41,8 @@ private:
     btBroadphaseInterface *m_overlappingPairCache;
     btSequentialImpulseConstraintSolver *m_solver;
     btDiscreteDynamicsWorld *m_dynamicsWorld;
+
+    btRigidBody *m_groundBody = nullptr;
 
     std::vector<btCollisionShape *> m_collisionShapes;
 };

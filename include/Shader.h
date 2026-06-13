@@ -8,6 +8,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <unordered_map>
+
 enum class UniformType : uint8_t
 {
     Int = 0x01,
@@ -28,6 +30,7 @@ class Shader
 public:
     unsigned int ID, vertexShaderID, fragmentShaderID;
     const char *Name;
+    std::unordered_map<std::string, int> uniformLocations;
 
     Shader(const char *Name, const char *vertex_shader_src, const char *fragment_shader_src);
     Shader(const char *vertex_shader_src, const char *fragment_shader_src);
@@ -35,6 +38,7 @@ public:
     void use();
 
     void setUniforms(const char *uName, unsigned int type, void *value);
+    int getUniformLocation(const std::string &name);
 
 private:
     void checkCompileErrors(unsigned int id, const char *type);

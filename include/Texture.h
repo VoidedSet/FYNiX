@@ -26,7 +26,7 @@ public:
     void UploadToGPU();
 
     void Bind(unsigned int texSlot);
-    void SetUniform(Shader &shader, const std::string &uniformName);
+    void SetUniform(Shader &shader, const std::string &uniformName, unsigned int texSlot);
     void UnBind();
 
 private:

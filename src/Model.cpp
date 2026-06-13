@@ -1,10 +1,27 @@
 #include "Model.h"
 #include "Mesh.h"
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+namespace
+{
+    const std::vector<std::string> boneUniformNames = []() {
+        std::vector<std::string> names;
+        for (int i = 0; i < 200; ++i)
+        {
+            names.push_back("bone_transforms[" + std::to_string(i) + "]");
+        }
+        return names;
+    }();
+}
 
 Model::Model(const std::string &path, unsigned int ID, bool uploadToGPU) : ID(ID), directory(path)
 {
-    if (loadModel(path, uploadToGPU))
+    if (path.rfind("primitive:", 0) == 0)
+    {
+        generatePrimitive(path, uploadToGPU);
+    }
+    else if (loadModel(path, uploadToGPU))
     {
         std::cout << "[Model] Model loaded successfully from: " << path << std::endl;
         if (uploadToGPU)
@@ -50,7 +67,7 @@ void Model::Draw(Shader &shader)
     {
         for (int i = 0; i < finalBoneMatrices.size(); i++)
         {
-            std::string uniformName = "bone_transforms[" + std::to_string(i) + "]";
+            const std::string &uniformName = boneUniformNames[i];
             shader.setUniforms(uniformName.c_str(), (unsigned int)UniformType::Mat4f, (void *)(glm::value_ptr(finalBoneMatrices[i])));
         }
     }
@@ -284,4 +301,28 @@ void Model::seek(float time)
     {
         animator.seek(time, skeleton, finalBoneMatrices, globalInverseTransform);
     }
+}
+
+void Model::generatePrimitive(const std::string &primitiveType, bool uploadToGPU)
+{
+    MeshType type = MeshType::CUBE;
+    if (primitiveType == "primitive:box" || primitiveType == "primitive:cube")
+    {
+        type = MeshType::CUBE;
+    }
+    else if (primitiveType == "primitive:sphere")
+    {
+        type = MeshType::SPHERE;
+    }
+    else if (primitiveType == "primitive:cylinder")
+    {
+        type = MeshType::CYLINDER;
+    }
+    else if (primitiveType == "primitive:cone")
+    {
+        type = MeshType::CONE;
+    }
+    
+    meshes.emplace_back(type);
+    std::cout << "[Model] Procedural primitive generated: " << primitiveType << std::endl;
 }

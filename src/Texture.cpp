@@ -74,16 +74,16 @@ void Texture::Bind(unsigned int texSlot)
     glBindTexture(textureType, ID);
 }
 
-void Texture::SetUniform(Shader &shader, const std::string &uniformName)
+void Texture::SetUniform(Shader &shader, const std::string &uniformName, unsigned int texSlot)
 {
     shader.use(); // Optional, only if not already active
-    int loc = glGetUniformLocation(shader.ID, uniformName.c_str());
+    int loc = shader.getUniformLocation(uniformName);
     if (loc == -1)
     {
         std::cerr << "[Texture - ERROR] Uniform '" << uniformName << "' not found in shader." << std::endl;
         return;
     }
-    glUniform1i(loc, textureUnit);
+    glUniform1i(loc, texSlot);
 }
 
 void Texture::UnBind()

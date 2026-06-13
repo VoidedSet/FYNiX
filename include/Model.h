@@ -35,11 +35,19 @@ struct Skeleton
 class Model
 {
 public:
+    struct ModelMaterial
+    {
+        glm::vec3 ambient = glm::vec3(0.1f);
+        glm::vec3 diffuse = glm::vec3(1.0f);
+        glm::vec3 specular = glm::vec3(0.5f);
+        float shininess = 32.0f;
+    };
+
     unsigned int ID;
     std::string directory;
     glm::mat4 globalInverseTransform;
     bool hasAnimation = false;
-    bool physicsEnabled = false;
+    ModelMaterial material;
 
     Model(const std::string &path, unsigned int ID, bool uploadToGPU = true);
 
@@ -65,11 +73,12 @@ private:
     Animator animator;
     std::vector<glm::mat4> finalBoneMatrices;
 
-    glm::vec3 position = glm::vec3(1.f),
-              rotation = glm::vec3(1.f),
+    glm::vec3 position = glm::vec3(0.f),
+              rotation = glm::vec3(0.f),
               scale = glm::vec3(1.f);
 
     bool loadModel(std::string path, bool uploadToGPU);
+    void generatePrimitive(const std::string &primitiveType, bool uploadToGPU);
     void processNode(aiNode *node, const aiScene *scene, bool uploadToGPU);
     Mesh processMesh(aiMesh *mesh, const aiScene *scene, bool uploadToGPU);
 
