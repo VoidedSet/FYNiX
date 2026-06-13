@@ -78,6 +78,7 @@ private:
               scale = glm::vec3(1.f);
 
     bool loadModel(std::string path, bool uploadToGPU);
+    void generatePrimitive(const std::string &primitiveType, bool uploadToGPU);
     void processNode(aiNode *node, const aiScene *scene, bool uploadToGPU);
     Mesh processMesh(aiMesh *mesh, const aiScene *scene, bool uploadToGPU);
 

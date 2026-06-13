@@ -473,12 +473,34 @@ void GUIManager::DrawAddNodeModal()
         ImGui::Separator();
 
         static bool loadAsynchronously = true;
+        static int modelSource = 0; // 0 = File, 1 = Primitive
+        static int selectedPrimitive = 0;
 
         switch (static_cast<NodeType>(selectedNodeType))
         {
         case NodeType::Model:
-            ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
-            ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
+            {
+                ImGui::RadioButton("Load from File", &modelSource, 0); ImGui::SameLine();
+                ImGui::RadioButton("Create Primitive", &modelSource, 1);
+                
+                if (modelSource == 0)
+                {
+                    ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
+                    ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
+                }
+                else
+                {
+                    static const char* primitiveLabels[] = {"Box", "Sphere", "Cylinder", "Cone"};
+                    ImGui::Combo("Shape", &selectedPrimitive, primitiveLabels, IM_ARRAYSIZE(primitiveLabels));
+                    
+                    if (selectedPrimitive == 0) strcpy(modelPathInput, "primitive:box");
+                    else if (selectedPrimitive == 1) strcpy(modelPathInput, "primitive:sphere");
+                    else if (selectedPrimitive == 2) strcpy(modelPathInput, "primitive:cylinder");
+                    else if (selectedPrimitive == 3) strcpy(modelPathInput, "primitive:cone");
+                    
+                    loadAsynchronously = false; // Primitives are instant
+                }
+            }
             break;
         case NodeType::Light:
             ImGui::Combo("Light Type", &selectedLightType, lightTypeLabels, IM_ARRAYSIZE(lightTypeLabels));
@@ -746,6 +768,18 @@ namespace
         {
             selectedNode->position = light->position;
         }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        glm::vec3 eulerRotation = glm::degrees(selectedNode->rotation);
+        if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 0.1f))
+        {
+            selectedNode->rotation = glm::radians(eulerRotation);
+        }
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            scene->pushUndoState();
+
+        if (ImGui::DragFloat("Intensity", &light->intensity, 0.05f, 0.0f, 100.0f)) {}
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 

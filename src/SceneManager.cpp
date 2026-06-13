@@ -143,7 +143,6 @@ SceneManager::SceneManager(const std::string &projectPath) : projectPath(project
 
 SceneManager::~SceneManager()
 {
-    std::cout << "[SceneManager] Shutting down and deleting all scene nodes." << std::endl;
     for (Node *node : nodes)
     {
         delete node;
@@ -154,9 +153,16 @@ SceneManager::~SceneManager()
     if (physics)
     {
         delete physics;
-        physics = nullptr;
+    }
+    rigidBodies.clear();
+
+    if (cameraMesh)
+    {
+        delete cameraMesh;
     }
 }
+
+
 
 void SceneManager::addToParent(std::string &name, NodeType type, unsigned int parentID, LightType lightType, unsigned int forcedID)
 {
@@ -477,8 +483,10 @@ void SceneManager::RenderModels(Shader &shader, float deltaTime)
 
         int typeVal = static_cast<int>(light.type);
 
+        glm::vec3 finalColor = light.color * light.intensity;
+
         shader.setUniforms(posName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldPos)));
-        shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(light.color)));
+        shader.setUniforms(colName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(finalColor)));
         shader.setUniforms(typeName.c_str(), (unsigned int)UniformType::Int, &typeVal);
         shader.setUniforms(dirName.c_str(), (unsigned int)UniformType::Vec3f, (void *)(glm::value_ptr(worldDir)));
         idx++;
@@ -557,6 +565,30 @@ void SceneManager::RenderPhysics(float dt, Shader &shader)
         physics->Draw(shader);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
+}
+
+void SceneManager::RenderCameras(Shader &shader)
+{
+    if (cameraMesh == nullptr)
+    {
+        cameraMesh = new Mesh(MeshType::CAMERA_PYRAMID);
+    }
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    for (Node *node : nodes)
+    {
+        if (node->type == NodeType::Camera && node->ID != activeCameraID)
+        {
+            shader.use();
+            glm::mat4 worldMat = getWorldTransform(node->ID);
+            worldMat = glm::scale(worldMat, glm::vec3(0.5f));
+            glm::vec3 camColor(0.7f, 0.7f, 0.7f); // light gray
+            shader.setUniforms("uLightColor", static_cast<unsigned int>(UniformType::Vec3f), (void *)(glm::value_ptr(camColor)));
+            shader.setUniforms("model", static_cast<unsigned int>(UniformType::Mat4f), (void *)(glm::value_ptr(worldMat)));
+            cameraMesh->Draw(shader);
+        }
+    }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
 void SceneManager::deleteNode(unsigned int ID)
@@ -733,7 +765,10 @@ json SceneManager::serializeScene()
                 Light &light = it->second;
                 j["color"] = {light.color.x, light.color.y, light.color.z};
                 j["position"] = {light.position.x, light.position.y, light.position.z};
+                j["rotation"] = {node->rotation.x, node->rotation.y, node->rotation.z};
+                j["scale"] = {node->scale.x, node->scale.y, node->scale.z};
                 j["lightType"] = lightTypeToString(light.type);
+                j["intensity"] = light.intensity;
             }
         }
 
@@ -891,6 +926,18 @@ void SceneManager::deserializeScene(const nlohmann::json &data)
                     glm::vec3 pos(j["position"][0], j["position"][1], j["position"][2]);
                     light->position = pos;
                     newNode->position = pos;
+                }
+                if (j.contains("rotation"))
+                {
+                    newNode->rotation = glm::vec3(j["rotation"][0], j["rotation"][1], j["rotation"][2]);
+                }
+                if (j.contains("scale"))
+                {
+                    newNode->scale = glm::vec3(j["scale"][0], j["scale"][1], j["scale"][2]);
+                }
+                if (j.contains("intensity"))
+                {
+                    light->intensity = j["intensity"];
                 }
                 if (j.contains("color"))
                     light->color = glm::vec3(j["color"][0], j["color"][1], j["color"][2]);

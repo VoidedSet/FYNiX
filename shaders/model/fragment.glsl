@@ -17,6 +17,7 @@ struct Material {
 };
 uniform Material material;
 uniform bool useSpecularMap;
+uniform bool useDiffuseMap;
 
 uniform sampler2D texture_diffuse0;
 uniform sampler2D texture_specular0;
@@ -68,6 +69,6 @@ void main() {
         result += (ambient + diffuse + specular);
     }
 
-    vec4 texColor = texture(texture_diffuse0, TexCoord);
+    vec4 texColor = useDiffuseMap ? texture(texture_diffuse0, TexCoord) : vec4(1.0);
     FragColor = vec4(result * texColor.rgb, texColor.a);
 }

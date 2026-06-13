@@ -17,7 +17,11 @@ namespace
 
 Model::Model(const std::string &path, unsigned int ID, bool uploadToGPU) : ID(ID), directory(path)
 {
-    if (loadModel(path, uploadToGPU))
+    if (path.rfind("primitive:", 0) == 0)
+    {
+        generatePrimitive(path, uploadToGPU);
+    }
+    else if (loadModel(path, uploadToGPU))
     {
         std::cout << "[Model] Model loaded successfully from: " << path << std::endl;
         if (uploadToGPU)
@@ -297,4 +301,28 @@ void Model::seek(float time)
     {
         animator.seek(time, skeleton, finalBoneMatrices, globalInverseTransform);
     }
+}
+
+void Model::generatePrimitive(const std::string &primitiveType, bool uploadToGPU)
+{
+    MeshType type = MeshType::CUBE;
+    if (primitiveType == "primitive:box" || primitiveType == "primitive:cube")
+    {
+        type = MeshType::CUBE;
+    }
+    else if (primitiveType == "primitive:sphere")
+    {
+        type = MeshType::SPHERE;
+    }
+    else if (primitiveType == "primitive:cylinder")
+    {
+        type = MeshType::CYLINDER;
+    }
+    else if (primitiveType == "primitive:cone")
+    {
+        type = MeshType::CONE;
+    }
+    
+    meshes.emplace_back(type);
+    std::cout << "[Model] Procedural primitive generated: " << primitiveType << std::endl;
 }

@@ -4,7 +4,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 Light::Light(unsigned int id, LightType type)
-    : ID(id), type(type), lightMesh(Mesh(MeshType::CUBE))
+    : ID(id), type(type), lightMesh(type == LightType::SPOT ? Mesh(MeshType::CONE) : Mesh(MeshType::SPHERE))
 {
     std::cout << "[Lights] Created a Light with ID: " << ID << " and type: " << (unsigned int)type << std::endl;
 }

@@ -24,7 +24,10 @@ enum MeshType
 {
     CUBE,
     SPHERE,
-    PLANE
+    PLANE,
+    CYLINDER,
+    CONE,
+    CAMERA_PYRAMID
 };
 
 class Mesh

@@ -60,6 +60,7 @@ public:
     ShaderManager *sm = nullptr;
     PhysicsEngine *physics = nullptr;
     std::atomic<int> physicsCounter{0};
+    Mesh *cameraMesh = nullptr;
 
     bool drawLights = true,
          drawPhysics = true,
@@ -113,6 +114,7 @@ public:
     void RenderLights(Shader &shader);
     void RenderParticles(float dt);
     void RenderPhysics(float dt, Shader &shader);
+    void RenderCameras(Shader &shader);
 
     void deleteNode(unsigned int ID);
 

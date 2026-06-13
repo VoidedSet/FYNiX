@@ -18,6 +18,7 @@ public:
     glm::vec3 position;
     glm::vec3 color = glm::vec3(1.f);
     LightType type;
+    float intensity = 1.0f;
 
     Mesh lightMesh;
 

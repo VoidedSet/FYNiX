@@ -330,6 +330,7 @@ int main()
             scene.RenderModels(defaultShader, deltaTime);
         if (!scene.lights.empty())
             scene.RenderLights(lightShader);
+        scene.RenderCameras(lightShader);
         if (!scene.particleEmitters.empty())
             scene.RenderParticles(deltaTime);
         if (!scene.rigidBodies.empty())
