@@ -802,6 +802,11 @@ json SceneManager::serializeScene()
                     trans = body->getWorldTransform();
                     
                 j["position"] = {trans.getOrigin().getX(), trans.getOrigin().getY(), trans.getOrigin().getZ()};
+                
+                // Save rotation from the node itself
+                j["rotation"] = {node->rotation.x, node->rotation.y, node->rotation.z};
+                // Save scale from the node itself
+                j["scale"] = {node->scale.x, node->scale.y, node->scale.z};
             }
         }
 
@@ -975,23 +980,59 @@ void SceneManager::deserializeScene(const nlohmann::json &data)
             if (j.contains("mass"))
                 mass = j["mass"];
             addToParent(name, type, parent->ID, RigidBodyShape::CUBE, mass, id);
-
-            // Set physics rigid body position if available
+ 
+            // Set physics rigid body transform, scale, rotation if available
             auto *body = getRigidBodyByID(id);
             Node *newNode = find_node(id);
-            if (body && newNode && j.contains("position"))
+            if (body && newNode)
             {
-                btTransform trans = body->getWorldTransform();
-                trans.setOrigin(btVector3(j["position"][0], j["position"][1], j["position"][2]));
+                glm::vec3 pos(0.0f);
+                if (j.contains("position"))
+                    pos = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
+                
+                glm::vec3 rot(0.0f);
+                if (j.contains("rotation"))
+                    rot = glm::vec3(j["rotation"][0], j["rotation"][1], j["rotation"][2]);
+
+                glm::vec3 scl(1.0f);
+                if (j.contains("scale"))
+                    scl = glm::vec3(j["scale"][0], j["scale"][1], j["scale"][2]);
+
+                newNode->position = pos;
+                newNode->rotation = rot;
+                newNode->scale = scl;
+
+                // Build complete transform matrix to set bullet rigid body orientation and position
+                glm::mat4 localMat = glm::translate(glm::mat4(1.0f), pos);
+                localMat = glm::rotate(localMat, rot.x, glm::vec3(1.f, 0.f, 0.f));
+                localMat = glm::rotate(localMat, rot.y, glm::vec3(0.f, 1.f, 0.f));
+                localMat = glm::rotate(localMat, rot.z, glm::vec3(0.f, 0.f, 1.f));
+
+                btTransform trans;
+                trans.setFromOpenGLMatrix(glm::value_ptr(localMat));
+
                 body->setWorldTransform(trans);
                 if (body->getMotionState())
                 {
                     body->getMotionState()->setWorldTransform(trans);
                 }
+
+                // Set scaling in physics
+                body->getCollisionShape()->setLocalScaling(btVector3(scl.x, scl.y, scl.z));
+                if (physics)
+                {
+                    physics->getDynamicsWorld()->updateSingleAabb(body);
+                }
+
+                // Recompute local inertia and mass properties
+                btVector3 localInertia(0, 0, 0);
+                if (mass > 0.0f)
+                    body->getCollisionShape()->calculateLocalInertia(mass, localInertia);
+                body->setMassProps(mass, localInertia);
+                body->updateInertiaTensor();
                 
-                // Save loaded position as the initial transform
+                // Save loaded transform as the initial transform
                 initialTransforms[id] = trans;
-                newNode->position = glm::vec3(j["position"][0], j["position"][1], j["position"][2]);
             }
         }
         else
