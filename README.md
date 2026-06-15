@@ -25,9 +25,16 @@ Originally started as a 10-day challenge, it has evolved into a long-term learni
 - **Asset Loading**: Assimp, stb_image
 - **Editor UI**: Dear ImGui
 
+## 📈 Performance
+
+A comparison of task dispatch latency when scheduling 100,000 concurrent micro-jobs under heavy thread contention:
+
+![Scheduler Performance Benchmark](docs/images/benchmark.png)
+
 ---
 
 ## 🚧 Status
 
 Actively developed to explore low-level engine architecture. Includes a profiler overlay to monitor queue depth, scheduler metrics, and subsystem performance in real-time.
+
 
