@@ -126,8 +126,8 @@ void ShowSplashScreen()
 {
     // Load splash image
     int width, height, channels;
-    stbi_set_flip_vertically_on_load(true); 
-    unsigned char* pixels = stbi_load("banner.png", &width, &height, &channels, 4);
+    stbi_set_flip_vertically_on_load(true);
+    unsigned char *pixels = stbi_load("banner.png", &width, &height, &channels, 4);
     if (!pixels)
     {
         std::cerr << "[Splash] Failed to load banner.png" << std::endl;
@@ -147,12 +147,12 @@ void ShowSplashScreen()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
     int xPos = (mode->width - splashWidth) / 2;
     int yPos = (mode->height - splashHeight) / 2;
 
-    GLFWwindow* splashWindow = glfwCreateWindow(splashWidth, splashHeight, "FYNiX Splash", NULL, NULL);
+    GLFWwindow *splashWindow = glfwCreateWindow(splashWidth, splashHeight, "FYNiX Splash", NULL, NULL);
     if (!splashWindow)
     {
         std::cerr << "[Splash] Failed to create splash window" << std::endl;
@@ -175,7 +175,7 @@ void ShowSplashScreen()
     glViewport(0, 0, splashWidth, splashHeight);
 
     // Set up splash shaders
-    const char* vsSource = R"(
+    const char *vsSource = R"(
         #version 330 core
         layout (location = 0) in vec2 aPos;
         layout (location = 1) in vec2 aTexCoords;
@@ -185,7 +185,7 @@ void ShowSplashScreen()
             TexCoords = aTexCoords;
         }
     )";
-    const char* fsSource = R"(
+    const char *fsSource = R"(
         #version 330 core
         out vec4 FragColor;
         in vec2 TexCoords;
@@ -214,14 +214,13 @@ void ShowSplashScreen()
     // Quad geometry (NDC coordinates)
     float vertices[] = {
         // positions   // texCoords
-        -1.0f,  1.0f,  0.0f, 1.0f,
-        -1.0f, -1.0f,  0.0f, 0.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
+        -1.0f, 1.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 0.0f,
+        1.0f, -1.0f, 1.0f, 0.0f,
 
-        -1.0f,  1.0f,  0.0f, 1.0f,
-         1.0f, -1.0f,  1.0f, 0.0f,
-         1.0f,  1.0f,  1.0f, 1.0f
-    };
+        -1.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, -1.0f, 1.0f, 0.0f,
+        1.0f, 1.0f, 1.0f, 1.0f};
 
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
@@ -232,9 +231,9 @@ void ShowSplashScreen()
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
 
     // Create and bind texture
     unsigned int texture;

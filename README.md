@@ -1,4 +1,4 @@
-# FYNiX
+![FYNiX Banner](docs/images/banner.png)
 
 FYNiX is a modular, custom C++ game engine built using OpenGL, integrating real-time rendering, skeletal animation, physics, and a custom multithreaded job scheduler.
 
@@ -6,7 +6,19 @@ Originally started as a 10-day challenge, it has evolved into a long-term learni
 
 ---
 
-## ⚡ Core Systems
+## Showcase
+
+![FYNiX Editor in Action](docs/images/fynx.gif)
+*Real-time demonstration of physics collisions, custom particle simulations, point lights, and skeletal animation blending.*
+
+![FYNiX Editor UI](docs/images/engine.png)
+*Full editor user interface featuring a live scene graph tree, entity property editor, diagnostics console, and concurrency performance monitor.*
+
+---
+
+## Core Systems
+
+![FYNiX Architecture Diagram](docs/images/architecture.png)
 
 - **Real-Time Rendering**: Custom OpenGL rendering pipeline featuring phong lighting, dynamic particle emitters, and debug visualizers.
 - **Skeletal Animation**: Hierarchical transform propagation, rigged glTF asset support, and quaternion-based skeletal animation blending.
@@ -17,15 +29,7 @@ Originally started as a 10-day challenge, it has evolved into a long-term learni
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Core / Math**: C++17, GLM
-- **Rendering / Windowing**: OpenGL 3.3, GLFW, GLAD
-- **Physics / Collision**: Bullet Physics
-- **Asset Loading**: Assimp, stb_image
-- **Editor UI**: Dear ImGui
-
-## 📈 Performance
+## Performance
 
 A comparison of task dispatch latency when scheduling 100,000 concurrent micro-jobs under heavy thread contention:
 
@@ -33,8 +37,19 @@ A comparison of task dispatch latency when scheduling 100,000 concurrent micro-j
 
 ---
 
-## 🚧 Status
+## Tech Stack
+
+- **Core / Math**: C++17, GLM
+- **Rendering / Windowing**: OpenGL 3.3, GLFW, GLAD
+- **Physics / Collision**: Bullet Physics
+- **Asset Loading**: Assimp, stb_image
+- **Editor UI**: Dear ImGui
+
+---
+
+## Status
 
 Actively developed to explore low-level engine architecture. Includes a profiler overlay to monitor queue depth, scheduler metrics, and subsystem performance in real-time.
+
 
 
