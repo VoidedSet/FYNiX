@@ -1,0 +1,17 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\Software\Classes\.fynx]
+@="FYNiX.Project"
+
+[HKEY_CURRENT_USER\Software\Classes\FYNiX.Project]
+@="FYNiX Scene File"
+
+[HKEY_CURRENT_USER\Software\Classes\FYNiX.Project\DefaultIcon]
+@="D:\\Projects\\fynx\\fynix.exe,0"
+
+[HKEY_CURRENT_USER\Software\Classes\FYNiX.Project\shell]
+
+[HKEY_CURRENT_USER\Software\Classes\FYNiX.Project\shell\open]
+
+[HKEY_CURRENT_USER\Software\Classes\FYNiX.Project\shell\open\command]
+@="\"D:\\Projects\\fynx\\fynix.exe\" \"%1\""

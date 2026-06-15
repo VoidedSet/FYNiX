@@ -22,8 +22,8 @@ namespace
     char modelPathInput[256] = "";
     char shaderNameInput[256] = "";
     int parentNodeId = 0;
-    int selectedNodeType = 1;  // Default to Model
-    int selectedLightType = 0; // Default to Directional
+    int selectedNodeType = 1;       // Default to Model
+    int selectedLightType = 0;      // Default to Directional
     int selectedRigidBodyShape = 0; // Default to Cube
     int maxParticles = 1000;
     float rigidBodyMass = 1.0f;
@@ -117,7 +117,7 @@ void RestoreOutput()
 }
 
 static void DrawConsolePanel(int windowWidth, int windowHeight);
-static void DrawResourceOverlay();
+static void DrawResourceOverlay(int windowWidth, int windowHeight);
 
 // ===================================================================================
 // ========================= GUIManager CLASS IMPLEMENTATION =========================
@@ -184,7 +184,7 @@ void GUIManager::Start()
     DrawSidePanel(windowWidth, windowHeight);
     DrawConsolePanel(windowWidth, windowHeight);
     DrawAddNodeModal();
-    DrawResourceOverlay();
+    DrawResourceOverlay(windowWidth, windowHeight);
 }
 
 void GUIManager::Render()
@@ -233,7 +233,7 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
             if (ImGui::Button("Add Node...", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
                 showAddNodeModal = true;
             ImGui::SameLine();
-            
+
             // Highlight Save button when scene has unsaved changes (dirty)
             bool wasDirty = scene->isDirty;
             if (wasDirty)
@@ -259,27 +259,31 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
             ImGui::Spacing();
             bool canUndo = !scene->undoStack.empty();
             bool canRedo = !scene->redoStack.empty();
-            
-            if (!canUndo) ImGui::BeginDisabled();
+
+            if (!canUndo)
+                ImGui::BeginDisabled();
             if (ImGui::Button("Undo", ImVec2(ImGui::GetContentRegionAvail().x * 0.5f - 2, 0)))
                 scene->undo();
-            if (!canUndo) ImGui::EndDisabled();
-            
+            if (!canUndo)
+                ImGui::EndDisabled();
+
             ImGui::SameLine();
-            
-            if (!canRedo) ImGui::BeginDisabled();
+
+            if (!canRedo)
+                ImGui::BeginDisabled();
             if (ImGui::Button("Redo", ImVec2(-1, 0)))
                 scene->redo();
-            if (!canRedo) ImGui::EndDisabled();
+            if (!canRedo)
+                ImGui::EndDisabled();
 
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Text("Camera View");
-            
-            const char* currentCamLabel = "Viewport Camera";
+
+            const char *currentCamLabel = "Viewport Camera";
             if (scene->activeCameraID != 0)
             {
-                Node* camNode = scene->find_node(scene->activeCameraID);
+                Node *camNode = scene->find_node(scene->activeCameraID);
                 if (camNode)
                     currentCamLabel = camNode->name.c_str();
             }
@@ -298,7 +302,7 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                             globalCamera->yaw = scene->viewportYaw;
                             globalCamera->pitch = scene->viewportPitch;
                             globalCamera->camUp = glm::vec3(0.0f, 1.0f, 0.0f);
-                            
+
                             glm::vec3 direction;
                             direction.x = cos(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
                             direction.y = sin(glm::radians(globalCamera->pitch));
@@ -327,9 +331,9 @@ void GUIManager::DrawSidePanel(int windowWidth, int windowHeight)
                                         scene->viewportYaw = globalCamera->yaw;
                                         scene->viewportPitch = globalCamera->pitch;
                                     }
-                                    
+
                                     scene->cameraChangesPending = false;
-                                    
+
                                     glm::mat4 cameraWorldMat = scene->getWorldTransform(n->ID);
                                     globalCamera->camPos = glm::vec3(cameraWorldMat[3]);
                                     globalCamera->camTarget = -glm::normalize(glm::vec3(cameraWorldMat[2]));
@@ -479,29 +483,34 @@ void GUIManager::DrawAddNodeModal()
         switch (static_cast<NodeType>(selectedNodeType))
         {
         case NodeType::Model:
+        {
+            ImGui::RadioButton("Load from File", &modelSource, 0);
+            ImGui::SameLine();
+            ImGui::RadioButton("Create Primitive", &modelSource, 1);
+
+            if (modelSource == 0)
             {
-                ImGui::RadioButton("Load from File", &modelSource, 0); ImGui::SameLine();
-                ImGui::RadioButton("Create Primitive", &modelSource, 1);
-                
-                if (modelSource == 0)
-                {
-                    ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
-                    ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
-                }
-                else
-                {
-                    static const char* primitiveLabels[] = {"Box", "Sphere", "Cylinder", "Cone"};
-                    ImGui::Combo("Shape", &selectedPrimitive, primitiveLabels, IM_ARRAYSIZE(primitiveLabels));
-                    
-                    if (selectedPrimitive == 0) strcpy(modelPathInput, "primitive:box");
-                    else if (selectedPrimitive == 1) strcpy(modelPathInput, "primitive:sphere");
-                    else if (selectedPrimitive == 2) strcpy(modelPathInput, "primitive:cylinder");
-                    else if (selectedPrimitive == 3) strcpy(modelPathInput, "primitive:cone");
-                    
-                    loadAsynchronously = false; // Primitives are instant
-                }
+                ImGui::InputText("Model Path", modelPathInput, IM_ARRAYSIZE(modelPathInput));
+                ImGui::Checkbox("Load Asynchronously", &loadAsynchronously);
             }
-            break;
+            else
+            {
+                static const char *primitiveLabels[] = {"Box", "Sphere", "Cylinder", "Cone"};
+                ImGui::Combo("Shape", &selectedPrimitive, primitiveLabels, IM_ARRAYSIZE(primitiveLabels));
+
+                if (selectedPrimitive == 0)
+                    strcpy(modelPathInput, "primitive:box");
+                else if (selectedPrimitive == 1)
+                    strcpy(modelPathInput, "primitive:sphere");
+                else if (selectedPrimitive == 2)
+                    strcpy(modelPathInput, "primitive:cylinder");
+                else if (selectedPrimitive == 3)
+                    strcpy(modelPathInput, "primitive:cone");
+
+                loadAsynchronously = false; // Primitives are instant
+            }
+        }
+        break;
         case NodeType::Light:
             ImGui::Combo("Light Type", &selectedLightType, lightTypeLabels, IM_ARRAYSIZE(lightTypeLabels));
             break;
@@ -708,19 +717,27 @@ namespace
         ImGui::Spacing();
 
         ImGui::PushItemWidth(-FLT_MIN * 0.5f);
-        if (ImGui::ColorEdit3("Ambient", glm::value_ptr(model->material.ambient))) {}
+        if (ImGui::ColorEdit3("Ambient", glm::value_ptr(model->material.ambient)))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 
-        if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(model->material.diffuse))) {}
+        if (ImGui::ColorEdit3("Diffuse", glm::value_ptr(model->material.diffuse)))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 
-        if (ImGui::ColorEdit3("Specular", glm::value_ptr(model->material.specular))) {}
+        if (ImGui::ColorEdit3("Specular", glm::value_ptr(model->material.specular)))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 
-        if (ImGui::DragFloat("Shininess", &model->material.shininess, 0.5f, 1.0f, 256.0f, "%.1f")) {}
+        if (ImGui::DragFloat("Shininess", &model->material.shininess, 0.5f, 1.0f, 256.0f, "%.1f"))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
         ImGui::PopItemWidth();
@@ -779,11 +796,15 @@ namespace
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 
-        if (ImGui::DragFloat("Intensity", &light->intensity, 0.05f, 0.0f, 100.0f)) {}
+        if (ImGui::DragFloat("Intensity", &light->intensity, 0.05f, 0.0f, 100.0f))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 
-        if (ImGui::ColorEdit3("Color", glm::value_ptr(light->color))) {}
+        if (ImGui::ColorEdit3("Color", glm::value_ptr(light->color)))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
     }
@@ -914,10 +935,12 @@ namespace
         ImGui::Spacing();
 
         ImGui::PushItemWidth(-FLT_MIN * 0.5f);
-        if (ImGui::DragFloat3("Position", glm::value_ptr(selectedNode->position), 0.01f)) {}
+        if (ImGui::DragFloat3("Position", glm::value_ptr(selectedNode->position), 0.01f))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
-        
+
         glm::vec3 eulerRotation = glm::degrees(selectedNode->rotation);
         if (ImGui::DragFloat3("Rotation", glm::value_ptr(eulerRotation), 0.1f))
         {
@@ -926,7 +949,9 @@ namespace
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 
-        if (ImGui::DragFloat3("Scale", glm::value_ptr(selectedNode->scale), 0.01f)) {}
+        if (ImGui::DragFloat3("Scale", glm::value_ptr(selectedNode->scale), 0.01f))
+        {
+        }
         if (ImGui::IsItemDeactivatedAfterEdit())
             scene->pushUndoState();
 
@@ -937,7 +962,7 @@ namespace
     {
         // Save original scheduler state
         bool wasLockFree = JobSystem::Get().IsUsingLockFree();
-        
+
         // Toggle to the target queue type for the benchmark
         JobSystem::Get().ToggleQueueType(useLockFree);
 
@@ -950,7 +975,8 @@ namespace
         {
             Job testJob;
             testJob.completionCounter = &completionCounter;
-            testJob.work = []() {
+            testJob.work = []()
+            {
                 // Simulate light microsecond math workloads typical to engine transformations or order booking
                 volatile int counter = 0;
                 for (int j = 0; j < 50; ++j)
@@ -981,14 +1007,15 @@ namespace
 
 static void DrawConsolePanel(int windowWidth, int windowHeight)
 {
-    const float consoleHeight = 180.0f;
+    const float consoleHeight = 350.0f;
+    const float resourceWidth = 320.0f;
 
-    ImGui::SetNextWindowPos(ImVec2(0, windowHeight - consoleHeight - 70), ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(windowWidth - SIDE_PANEL_WIDTH, consoleHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(0, windowHeight - consoleHeight - 10.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(windowWidth - SIDE_PANEL_WIDTH - resourceWidth, consoleHeight), ImGuiCond_Always);
 
     static bool autoScroll = true; // Tracks if we should auto-scroll
 
-    if (ImGui::Begin("Console"))
+    if (ImGui::Begin("Console", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse))
     {
         ImGui::BeginChild("LogRegion", ImVec2(0, -30), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
@@ -1004,19 +1031,18 @@ static void DrawConsolePanel(int windowWidth, int windowHeight)
     ImGui::End();
 }
 
-static void DrawResourceOverlay()
+static void DrawResourceOverlay(int windowWidth, int windowHeight)
 {
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-                             ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-                             ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+    const float consoleHeight = 350.0f;
+    const float resourceWidth = 320.0f;
 
-    const float PADDING = 10.0f;
-    const ImGuiViewport *viewport = ImGui::GetMainViewport();
-    ImVec2 pos(viewport->WorkPos.x + PADDING, viewport->WorkPos.y + PADDING);
-    ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.5f);
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
 
-    if (ImGui::Begin("Resource Overlay", nullptr, flags))
+    ImGui::SetNextWindowPos(ImVec2(windowWidth - SIDE_PANEL_WIDTH - resourceWidth, windowHeight - consoleHeight - 10.0f), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(resourceWidth, consoleHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowBgAlpha(0.85f);
+
+    if (ImGui::Begin("Resource Monitor", nullptr, flags))
     {
         ImGuiIO &io = ImGui::GetIO();
         float current_fps = io.DeltaTime > 0.0f ? (1.0f / io.DeltaTime) : 0.0f;
@@ -1051,30 +1077,37 @@ static void DrawResourceOverlay()
         // Reset peak for the next frame's tracking
         JobSystem::Get().ResetPeakQueueDepth();
 
-        if (ImGui::Button("Toggle Scheduler Mode")) {
+        if (ImGui::Button("Toggle Scheduler Mode"))
+        {
             JobSystem::Get().ToggleQueueType(!isLF);
         }
 
         ImGui::Spacing();
-        if (ImGui::Button("Run Micro-Benchmark (100k Jobs)")) {
+        if (ImGui::Button("Run Micro-Benchmark (100k Jobs)"))
+        {
             // Run both sequentially under identical constraints to generate real-time hardware metrics
-            lastBenchmarkTimeLF = ExecuteMicroBenchmark(true);  // Test Dmitri Vyukov's Lock-Free Ring Buffer
+            lastBenchmarkTimeLF = ExecuteMicroBenchmark(true);     // Test Dmitri Vyukov's Lock-Free Ring Buffer
             lastBenchmarkTimeMutex = ExecuteMicroBenchmark(false); // Test Mutex/Deque setup
             benchmarkExecuted = true;
         }
 
-        if (benchmarkExecuted) {
+        if (benchmarkExecuted)
+        {
             ImGui::Text("Lock-Free MPMC: %.3f ms", lastBenchmarkTimeLF);
             ImGui::Text("Mutex Guarded:  %.3f ms", lastBenchmarkTimeMutex);
 
             float efficiencyGain = 0.0f;
-            if (lastBenchmarkTimeLF > 0) {
+            if (lastBenchmarkTimeLF > 0)
+            {
                 efficiencyGain = ((lastBenchmarkTimeMutex - lastBenchmarkTimeLF) / lastBenchmarkTimeMutex) * 100.0f;
             }
 
-            if (efficiencyGain > 0) {
+            if (efficiencyGain > 0)
+            {
                 ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "Lock-Free is %.1f%% faster", efficiencyGain);
-            } else {
+            }
+            else
+            {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "Lock-Free is %.1f%% slower (Low core contention)", -efficiencyGain);
             }
         }

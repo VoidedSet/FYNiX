@@ -7,6 +7,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     glViewport(0, 0, width, height);
 }
 
+#include "stb_image.h"
+
 Window::Window(const char *title)
 {
     glfwWindowHint(GLFW_SAMPLES, 4);
@@ -25,6 +27,24 @@ Window::Window(const char *title)
     }
     else
         cout << "[FYNiX] Launching FYNiX: Framework for Yet-to-be Named eXperiences." << endl;
+
+    // Load and set window icon
+    stbi_set_flip_vertically_on_load(false);
+    int iconWidth, iconHeight, iconChannels;
+    unsigned char* iconPixels = stbi_load("fynix.png", &iconWidth, &iconHeight, &iconChannels, 4);
+    if (iconPixels)
+    {
+        GLFWimage iconImage[1];
+        iconImage[0].width = iconWidth;
+        iconImage[0].height = iconHeight;
+        iconImage[0].pixels = iconPixels;
+        glfwSetWindowIcon(window, 1, iconImage);
+        stbi_image_free(iconPixels);
+    }
+    else
+    {
+        cout << "[Window - WARNING] Failed to load window icon fynix.png" << endl;
+    }
 
     glfwMaximizeWindow(window);
     glfwMakeContextCurrent(window);

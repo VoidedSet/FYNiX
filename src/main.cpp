@@ -6,6 +6,7 @@
 // opengl and related includes
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "stb_image.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -121,8 +122,176 @@ std::string FindFynxProjectFile(const std::string &folderPath)
     return "";
 }
 
-int main()
+void ShowSplashScreen()
 {
+    // Load splash image
+    int width, height, channels;
+    stbi_set_flip_vertically_on_load(true); 
+    unsigned char* pixels = stbi_load("banner.png", &width, &height, &channels, 4);
+    if (!pixels)
+    {
+        std::cerr << "[Splash] Failed to load banner.png" << std::endl;
+        return;
+    }
+
+    // Scale banner size down by 65%
+    int splashWidth = static_cast<int>(width * 0.65f);
+    int splashHeight = static_cast<int>(height * 0.65f);
+
+    // Configure splash window hints (borderless, centered, on top)
+    glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    glfwWindowHint(GLFW_FLOATING, GLFW_TRUE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    int xPos = (mode->width - splashWidth) / 2;
+    int yPos = (mode->height - splashHeight) / 2;
+
+    GLFWwindow* splashWindow = glfwCreateWindow(splashWidth, splashHeight, "FYNiX Splash", NULL, NULL);
+    if (!splashWindow)
+    {
+        std::cerr << "[Splash] Failed to create splash window" << std::endl;
+        stbi_image_free(pixels);
+        return;
+    }
+
+    glfwSetWindowPos(splashWindow, xPos, yPos);
+    glfwMakeContextCurrent(splashWindow);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cerr << "[Splash] Failed to initialize GLAD for splash" << std::endl;
+        glfwDestroyWindow(splashWindow);
+        stbi_image_free(pixels);
+        return;
+    }
+
+    // Set viewport to the scaled window dimensions
+    glViewport(0, 0, splashWidth, splashHeight);
+
+    // Set up splash shaders
+    const char* vsSource = R"(
+        #version 330 core
+        layout (location = 0) in vec2 aPos;
+        layout (location = 1) in vec2 aTexCoords;
+        out vec2 TexCoords;
+        void main() {
+            gl_Position = vec4(aPos, 0.0, 1.0);
+            TexCoords = aTexCoords;
+        }
+    )";
+    const char* fsSource = R"(
+        #version 330 core
+        out vec4 FragColor;
+        in vec2 TexCoords;
+        uniform sampler2D splashTex;
+        void main() {
+            FragColor = texture(splashTex, TexCoords);
+        }
+    )";
+
+    unsigned int vs = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vs, 1, &vsSource, NULL);
+    glCompileShader(vs);
+
+    unsigned int fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &fsSource, NULL);
+    glCompileShader(fs);
+
+    unsigned int program = glCreateProgram();
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+    glLinkProgram(program);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    // Quad geometry (NDC coordinates)
+    float vertices[] = {
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+    // Create and bind texture
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(pixels);
+
+    // Render loop for splash screen (approx 2.5 seconds)
+    double startTime = glfwGetTime();
+    while (glfwGetTime() - startTime < 2.5)
+    {
+        if (glfwWindowShouldClose(splashWindow))
+            break;
+
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(program);
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        glfwSwapBuffers(splashWindow);
+        glfwPollEvents();
+    }
+
+    // Cleanup splash resources
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteTextures(1, &texture);
+    glDeleteProgram(program);
+    glfwDestroyWindow(splashWindow);
+
+    // Reset window hints for main window creation
+    glfwDefaultWindowHints();
+}
+
+int main(int argc, char *argv[])
+{
+    // Hide terminal console window by default unless --show argument is passed
+    bool showConsole = false;
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::string(argv[i]) == "--show")
+        {
+            showConsole = true;
+        }
+    }
+    if (!showConsole)
+    {
+        FreeConsole();
+    }
+
     std::string path = FindFynxProjectFile("Projects/Load_Project");
     if (path.empty())
     {
@@ -136,6 +305,8 @@ int main()
         cout << "Failed to initialize GLFW" << endl;
         return -1;
     }
+
+    ShowSplashScreen();
 
     JobSystem::Get().Initialize();
 
@@ -242,13 +413,13 @@ int main()
                         activeCam.camPos = scene.pendingCamPos;
                         activeCam.yaw = scene.pendingCamYaw;
                         activeCam.pitch = scene.pendingCamPitch;
-                        
+
                         glm::vec3 direction;
                         direction.x = cos(glm::radians(activeCam.yaw)) * cos(glm::radians(activeCam.pitch));
                         direction.y = sin(glm::radians(activeCam.pitch));
                         direction.z = sin(glm::radians(activeCam.yaw)) * cos(glm::radians(activeCam.pitch));
                         activeCam.camTarget = glm::normalize(direction);
-                        
+
                         *activeCam.view = glm::lookAt(activeCam.camPos, activeCam.camPos + activeCam.camTarget, activeCam.camUp);
                     }
                     else
@@ -275,7 +446,7 @@ int main()
                     globalCamera->yaw = scene.viewportYaw;
                     globalCamera->pitch = scene.viewportPitch;
                     globalCamera->camUp = glm::vec3(0.0f, 1.0f, 0.0f);
-                    
+
                     glm::vec3 direction;
                     direction.x = cos(glm::radians(globalCamera->yaw)) * cos(glm::radians(globalCamera->pitch));
                     direction.y = sin(glm::radians(globalCamera->pitch));
@@ -300,15 +471,17 @@ int main()
 
         //===== RENDER SECTION =====
         scene.UpdateAsyncLoads();
-        
+
         int fbWidth, fbHeight;
         glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
-        int renderWidth = fbWidth - 350;
-        int renderHeight = fbHeight - 250;
-        if (renderWidth < 100) renderWidth = 100;
-        if (renderHeight < 100) renderHeight = 100;
+        int renderWidth = fbWidth - 355;
+        int renderHeight = fbHeight - 285;
+        if (renderWidth < 100)
+            renderWidth = 100;
+        if (renderHeight < 100)
+            renderHeight = 100;
 
-        glViewport(0, 250, renderWidth, renderHeight);
+        glViewport(0, 285, renderWidth, renderHeight);
 
         glm::mat4 projection = glm::perspective(glm::radians(45.f), (float)renderWidth / (float)renderHeight, 0.1f, 100.f);
 

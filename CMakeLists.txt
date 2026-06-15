@@ -28,7 +28,11 @@ list(APPEND SRC_FILES "${CMAKE_SOURCE_DIR}/src/JobSystem.cpp")
 list(REMOVE_DUPLICATES SRC_FILES)
 
 # Executable
-add_executable(fynix ${SRC_FILES})
+if(WIN32)
+    add_executable(fynix ${SRC_FILES} "${CMAKE_SOURCE_DIR}/src/resource.rc")
+else()
+    add_executable(fynix ${SRC_FILES})
+endif()
 
 # ✅ Copy exe to root dir after build
 add_custom_command(TARGET fynix POST_BUILD
